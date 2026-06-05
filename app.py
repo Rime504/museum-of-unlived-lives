@@ -1,4 +1,4 @@
-# Museum front door — gr.Server custom UI + /open_room API.
+# Museum front door — gr.Blocks + custom FastAPI routes (HF Spaces compatible).
 
 from __future__ import annotations
 
@@ -8,9 +8,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-# HF Spaces enables SSR by default in Gradio 6; disable before gradio import.
 os.environ.setdefault("GRADIO_SSR_MODE", "false")
-os.environ.setdefault("GRADIO_HOT_RELOAD", "false")
 
 import gradio as gr
 from fastapi.responses import HTMLResponse
@@ -27,9 +25,14 @@ ROOT = Path(__file__).resolve().parent
 FRONTEND_DIR = ROOT / "frontend"
 INDEX_HTML = FRONTEND_DIR / "index.html"
 
-# HF Spaces looks for a module-level object named `demo`.
-demo = gr.Server()
-demo.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+# Custom FastAPI shell: static files + index.html at /. Passed to Blocks.launch(_app=...).
+custom_app = gr.Server()
+custom_app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
+
+@custom_app.get("/")
+def index() -> HTMLResponse:
+    return HTMLResponse(INDEX_HTML.read_text(encoding="utf-8"))
 
 
 def _png_data_uri(path: Path) -> str:
@@ -37,7 +40,6 @@ def _png_data_uri(path: Path) -> str:
     return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
 
 
-@demo.api(name="open_room")
 def open_room(user_line: str) -> dict[str, Any]:
     """Turn one counterfactual line into a museum exhibit payload for the frontend."""
     text = (user_line or "").strip()
@@ -60,17 +62,18 @@ def open_room(user_line: str) -> dict[str, Any]:
             "card_html": card_html,
             "png": _png_data_uri(png_path),
         }
-    except Exception as e:  # noqa: BLE001 — surface a friendly message to the gallery wall
+    except Exception as e:  # noqa: BLE001
         return {
             "ok": False,
             "error": f"The museum could not open this room. ({type(e).__name__}: {e})",
         }
 
 
-@demo.get("/")
-def index() -> HTMLResponse:
-    return HTMLResponse(INDEX_HTML.read_text(encoding="utf-8"))
+# HF Spaces expects `demo` to be gr.Blocks (not gr.Server) for its file watcher.
+with gr.Blocks(title="Museum of Unlived Lives") as demo:
+    gr.api(open_room, api_name="open_room")
 
+demo.queue(max_size=4)
 
 if os.environ.get("MUSEUM_WARMUP", "false").lower() in ("1", "true", "yes"):
     threading.Thread(target=preload_model, daemon=True).start()
@@ -78,6 +81,7 @@ if os.environ.get("MUSEUM_WARMUP", "false").lower() in ("1", "true", "yes"):
 
 if __name__ == "__main__":
     demo.launch(
+        _app=custom_app,
         server_name="0.0.0.0",
         server_port=int(os.environ.get("PORT", "7860")),
         show_error=True,
