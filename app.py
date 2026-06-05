@@ -19,7 +19,6 @@ from museum.export import export_card_png
 from museum.model import preload_model
 from museum.prompts import format_counterfactual
 from museum.schema import create_exhibit
-from museum.trace import log_generation
 
 ROOT = Path(__file__).resolve().parent
 FRONTEND_DIR = ROOT / "frontend"
@@ -53,7 +52,6 @@ def open_room(user_line: str) -> dict[str, Any]:
         exhibit = create_exhibit(text)
         card_html = render_card(exhibit)
         png_path = export_card_png(exhibit)
-        log_generation(text, exhibit.model_dump())
         return {
             "ok": True,
             "title": exhibit.exhibit_title,

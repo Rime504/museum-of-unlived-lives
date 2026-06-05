@@ -41,7 +41,6 @@ flowchart LR
     MODEL["model.py<br/>MiniCPM + grammar"]
     CARD["card.py + shapes.py<br/>HTML + SVG"]
     EXPORT["export.py<br/>PNG card"]
-    TRACE["trace.py<br/>trace.jsonl"]
   end
 
   UI -->|"@gradio/client"| API
@@ -50,7 +49,6 @@ flowchart LR
   SCHEMA --> MODEL
   SCHEMA --> CARD
   API --> EXPORT
-  API --> TRACE
   API -->|"card_html + png"| UI
 ```
 
@@ -61,9 +59,9 @@ Custom HTML/CSS frontend on `gr.Server` — no default Gradio UI. Inference runs
 ```
 app.py              gr.Server + /open_room endpoint
 frontend/           Custom UI (HTML, CSS, JS)
-museum/             Model, prompts, schema, shapes, card, export, trace
+museum/             Model, prompts, schema, shapes, card, export
 requirements.txt
-scripts/            Optional: fetch weights, tests, trace upload
+scripts/            Optional: fetch weights, tests
 ```
 
 Weights (`minicpm-8b-q4_k_m.gguf`, ~4.97 GB) are downloaded on first startup if not bundled. To ship them with the repo: `python scripts/fetch_gguf.py` then push via Git LFS (`.gitattributes` is configured).
@@ -86,7 +84,3 @@ Open `http://localhost:7860`.
 | `MUSEUM_N_CTX` | `4096` | Context window (model supports 64K; 4K keeps T4 fast) |
 
 Hardware: **Nvidia T4 - small**.
-
-## Trace dataset
-
-Generations append to `trace.jsonl`. Upload with `python scripts/push_trace.py` → [divmodelhq/museum-unlived-lives-trace](https://huggingface.co/datasets/divmodelhq/museum-unlived-lives-trace).
