@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Museum of Unlived Lives</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=EB+Garamond:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="hall-bg"></div>
+  <div class="spot a"></div>
+  <div class="spot b"></div>
+  <div class="grain"></div>
+  <div class="vignette"></div>
+
+  <main class="hall">
+    <header class="hero">
+      <p class="eyebrow">A museum of the lives you didn't live</p>
+      <h1 class="title">Museum of Unlived Lives</h1>
+      <p class="subtitle">Some lives we live. Most we only imagine.</p>
+      <hr class="rule" />
+    </header>
+
+    <section class="composer">
+      <label class="composer-label" for="line">Your counterfactual</label>
+      <div class="field">
+        <span class="whatif">What if</span>
+        <textarea id="line" rows="1" placeholder="I had said yes" autocomplete="off"></textarea>
+      </div>
+      <button class="cta" id="open" type="button">Open this room</button>
+    </section>
+
+    <section class="stage" id="stage" aria-live="polite"></section>
+
+    <section class="gallery">
+      <div class="gallery-head">
+        <h2>Your personal museum</h2>
+        <span id="count">0 rooms</span>
+      </div>
+      <div class="gallery-grid" id="grid">
+        <p class="gallery-empty">Your rooms will gather here.</p>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Built with <strong>MiniCPM4.1-8B</strong> via llama.cpp · abstract SVG shapes · fully local ·
+      <a href="/gradio_api/info" target="_blank" rel="noopener">API</a>
+    </footer>
+  </main>
+
+  <div class="lightbox" id="lightbox">
+    <span class="lb-close" id="lbClose">&times;</span>
+    <img id="lbImg" alt="exhibit" />
+  </div>
+
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>
