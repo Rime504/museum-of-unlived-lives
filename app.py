@@ -1,12 +1,4 @@
-# Custom-frontend front door for the museum — gr.Server (Off-Brand / custom UI).
-#
-# Architecture:
-#   * gr.Server  -> a FastAPI app with Gradio's queue + concurrency baked in.
-#   * @app.api   -> the inference endpoint the custom JS frontend calls.
-#   * @app.get("/") -> serves our hand-built index.html instead of Gradio's default UI.
-#
-# All the heavy lifting (MiniCPM via llama.cpp, schema, card, shapes, export)
-# stays exactly as-is in museum/* — only the presentation layer changed.
+# Museum front door — gr.Server custom UI + /open_room API.
 
 from __future__ import annotations
 
@@ -15,6 +7,10 @@ import os
 import threading
 from pathlib import Path
 from typing import Any
+
+# HF Spaces enables SSR by default in Gradio 6; disable before gradio import.
+os.environ.setdefault("GRADIO_SSR_MODE", "false")
+os.environ.setdefault("GRADIO_HOT_RELOAD", "false")
 
 import gradio as gr
 from fastapi.responses import HTMLResponse
@@ -31,10 +27,9 @@ ROOT = Path(__file__).resolve().parent
 FRONTEND_DIR = ROOT / "frontend"
 INDEX_HTML = FRONTEND_DIR / "index.html"
 
-app = gr.Server()
-
-# Serve the custom frontend's static assets (styles.css, app.js, ...).
-app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+# HF Spaces looks for a module-level object named `demo`.
+demo = gr.Server()
+demo.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 
 def _png_data_uri(path: Path) -> str:
@@ -42,7 +37,7 @@ def _png_data_uri(path: Path) -> str:
     return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
 
 
-@app.api(name="open_room")
+@demo.api(name="open_room")
 def open_room(user_line: str) -> dict[str, Any]:
     """Turn one counterfactual line into a museum exhibit payload for the frontend."""
     text = (user_line or "").strip()
@@ -72,7 +67,7 @@ def open_room(user_line: str) -> dict[str, Any]:
         }
 
 
-@app.get("/")
+@demo.get("/")
 def index() -> HTMLResponse:
     return HTMLResponse(INDEX_HTML.read_text(encoding="utf-8"))
 
@@ -82,8 +77,9 @@ if os.environ.get("MUSEUM_WARMUP", "false").lower() in ("1", "true", "yes"):
 
 
 if __name__ == "__main__":
-    app.launch(
+    demo.launch(
         server_name="0.0.0.0",
         server_port=int(os.environ.get("PORT", "7860")),
         show_error=True,
+        ssr_mode=False,
     )
