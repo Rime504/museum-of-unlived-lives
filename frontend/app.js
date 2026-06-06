@@ -105,7 +105,8 @@ async function fontsReady() {
   }
 }
 
-/** Download a high-res PNG of the live .museum-card (matches the screen). */
+/** Download a high-res PNG of the live .museum-card (matches the screen).
+ *  Transparent background so the 18px rounded corners stay curved (no black box). */
 async function downloadCardPng(cardEl, title) {
   await fontsReady();
   await snapdom.download(cardEl, {
@@ -113,7 +114,7 @@ async function downloadCardPng(cardEl, title) {
     filename: title,
     scale: 2,
     embedFonts: true,
-    backgroundColor: CARD_EXPORT_BG,
+    backgroundColor: "transparent",
   });
 }
 
