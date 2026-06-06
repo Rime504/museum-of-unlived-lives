@@ -1,7 +1,8 @@
 // Museum of Unlived Lives — frontend logic.
 // Talks to the gr.Server /open_room API via the official Gradio JS client.
 import { Client } from "https://esm.sh/@gradio/client@2.2.1";
-import { toPng, toJpeg } from "https://esm.sh/html-to-image@1.11.13";
+// SnapDOM: pixel-accurate DOM→image incl. ::before/::after, CSS vars, web fonts, SVG.
+import { snapdom } from "https://esm.sh/@zumer/snapdom@1";
 
 // Card surface color behind the rounded card when exported to an image.
 const CARD_EXPORT_BG = "#0e0c13";
@@ -96,25 +97,36 @@ let clientPromise = null;
 const getClient = () => (clientPromise ||= Client.connect(window.location.origin));
 
 // ---------- capture the exact card shown on screen ----------
-/** Render a live .museum-card element to a PNG data URL (high-res). */
-async function captureCardPng(cardEl) {
-  await (document.fonts?.ready ?? Promise.resolve());
-  return toPng(cardEl, {
-    pixelRatio: 2,
+async function fontsReady() {
+  try {
+    await (document.fonts?.ready ?? Promise.resolve());
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Download a high-res PNG of the live .museum-card (matches the screen). */
+async function downloadCardPng(cardEl, title) {
+  await fontsReady();
+  await snapdom.download(cardEl, {
+    format: "png",
+    filename: title,
+    scale: 2,
+    embedFonts: true,
     backgroundColor: CARD_EXPORT_BG,
-    cacheBust: true,
   });
 }
 
-/** Small JPEG for the gallery (keeps localStorage well under quota). */
+/** Small JPEG data URL for the gallery (keeps localStorage under quota). */
 async function captureCardThumb(cardEl) {
-  await (document.fonts?.ready ?? Promise.resolve());
-  return toJpeg(cardEl, {
-    pixelRatio: 0.5,
+  await fontsReady();
+  const img = await snapdom.toJpg(cardEl, {
+    scale: 0.5,
     quality: 0.82,
+    embedFonts: true,
     backgroundColor: CARD_EXPORT_BG,
-    cacheBust: true,
   });
+  return img.src;
 }
 
 function triggerDownload(url, filename) {
@@ -177,8 +189,11 @@ async function showExhibit(data) {
   downloadBtn?.addEventListener("click", async () => {
     downloadBtn.disabled = true;
     try {
-      const png = cardEl ? await captureCardPng(cardEl) : data.png;
-      triggerDownload(png, fileName);
+      if (cardEl) {
+        await downloadCardPng(cardEl, title);
+      } else if (data.png) {
+        triggerDownload(data.png, fileName);
+      }
     } catch {
       if (data.png) triggerDownload(data.png, fileName);
     } finally {
