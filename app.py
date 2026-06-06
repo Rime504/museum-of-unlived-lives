@@ -2,12 +2,34 @@
 
 from __future__ import annotations
 
+import asyncio.base_events as _base_events
 import base64
 import os
 import threading
 from pathlib import Path
 from typing import Any
 
+
+def _patch_asyncio_event_loop_del() -> None:
+    """Suppress Gradio 6 HF Spaces log noise: BaseEventLoop.__del__ fd -1."""
+    original_del = getattr(_base_events.BaseEventLoop, "__del__", None)
+    if original_del is None or getattr(original_del, "_museum_patched", False):
+        return
+
+    def _patched_del(self: _base_events.BaseEventLoop) -> None:
+        try:
+            original_del(self)
+        except ValueError as exc:
+            if "Invalid file descriptor" not in str(exc):
+                raise
+
+    _patched_del._museum_patched = True  # type: ignore[attr-defined]
+    _base_events.BaseEventLoop.__del__ = _patched_del  # type: ignore[method-assign]
+
+
+_patch_asyncio_event_loop_del()
+
+# HF Spaces enables SSR by default in Gradio 6; disable before gradio import.
 os.environ.setdefault("GRADIO_SSR_MODE", "false")
 
 import gradio as gr
