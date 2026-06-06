@@ -31,6 +31,7 @@ _STOP_SEQUENCES = ["<|im_end|>", "<|im_start|>", "<user>", "<assistant>", "</s>"
 _warmup_lock = threading.Lock()
 _warmup_started = False
 _weights_ready = threading.Event()
+_init_lock = threading.Lock()
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -97,19 +98,23 @@ def _init_minicpm() -> Any:
     if _minicpm is not None:
         return _minicpm
 
-    _preload_cuda_libs()
-    from llama_cpp import Llama
+    with _init_lock:
+        if _minicpm is not None:
+            return _minicpm
 
-    path = get_weights_path()
-    print("Loading MiniCPM into memory...", flush=True)
-    _minicpm = Llama(
-        model_path=str(path),
-        n_gpu_layers=int(os.environ.get("MUSEUM_N_GPU_LAYERS", "-1")),
-        n_ctx=int(os.environ.get("MUSEUM_N_CTX", "4096")),
-        n_threads=int(os.environ.get("MUSEUM_N_THREADS", "4")),
-        verbose=False,
-    )
-    print("MiniCPM loaded.", flush=True)
+        _preload_cuda_libs()
+        from llama_cpp import Llama
+
+        path = get_weights_path()
+        print("Loading MiniCPM into memory...", flush=True)
+        _minicpm = Llama(
+            model_path=str(path),
+            n_gpu_layers=int(os.environ.get("MUSEUM_N_GPU_LAYERS", "-1")),
+            n_ctx=int(os.environ.get("MUSEUM_N_CTX", "4096")),
+            n_threads=int(os.environ.get("MUSEUM_N_THREADS", "4")),
+            verbose=False,
+        )
+        print("MiniCPM loaded.", flush=True)
     return _minicpm
 
 
@@ -184,9 +189,46 @@ def wait_for_weights(timeout: float = 7200) -> None:
 
 @_gpu_wrap
 def preload_curator_gpu() -> None:
-    """Load MiniCPM into GPU memory (ZeroGPU-safe — call from Gradio request path)."""
+    """Load MiniCPM into GPU memory — must run via Gradio/ZeroGPU request path."""
     wait_for_weights()
     _init_minicpm()
+
+
+def _schedule_gradio_gpu_preload() -> None:
+    """Load model through Gradio API so it lands in the same worker as /open_room."""
+    import time
+    import urllib.error
+    import urllib.request
+
+    _weights_ready.wait()
+
+    port = os.environ.get("PORT", "7860")
+    base = f"http://127.0.0.1:{port}"
+
+    for _ in range(90):
+        try:
+            urllib.request.urlopen(base, timeout=2)
+            break
+        except (OSError, urllib.error.URLError):
+            time.sleep(2)
+    else:
+        print(
+            "Warmup: Gradio not ready — MiniCPM loads on first /open_room.",
+            flush=True,
+        )
+        return
+
+    try:
+        from gradio_client import Client
+
+        print("Warmup: loading MiniCPM via Gradio (ZeroGPU worker)...", flush=True)
+        Client(base, verbose=False).predict(api_name="/preload_curator")
+        print("Warmup complete — curator is ready.", flush=True)
+    except Exception as exc:
+        print(
+            f"Warmup: Gradio GPU load failed ({exc}) — loads on first /open_room.",
+            flush=True,
+        )
 
 
 @_gpu_wrap
@@ -234,22 +276,13 @@ def _ask_curator_impl(
 
 
 def preload_model() -> None:
-    """Download weights at startup, then load MiniCPM (GPU load on ZeroGPU when possible)."""
+    """Download weights at startup; on ZeroGPU, GPU load goes through Gradio API."""
     try:
         print("Warmup: downloading weights if needed...", flush=True)
         ensure_weights()
         print("Warmup: weights ready on disk.", flush=True)
         if on_zero_gpu():
-            print("Warmup: loading MiniCPM on ZeroGPU...", flush=True)
-            try:
-                preload_curator_gpu()
-                print("Warmup complete — curator is ready.", flush=True)
-            except Exception as gpu_exc:
-                print(
-                    f"Warmup: GPU load deferred ({gpu_exc}) — "
-                    "will load when the page opens or on first /open_room.",
-                    flush=True,
-                )
+            threading.Thread(target=_schedule_gradio_gpu_preload, daemon=True).start()
         else:
             _init_minicpm()
             print("Warmup complete — curator is ready.", flush=True)

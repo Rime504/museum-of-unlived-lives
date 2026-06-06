@@ -92,7 +92,7 @@ requirements.txt
 scripts/            Optional: fetch weights, tests
 ```
 
-Weights (`minicpm-8b-q4_k_m.gguf`, ~4.97 GB) download and load when the Space **starts** (one warmup at import). Wait for `Warmup complete — curator is ready.` in logs before the first exhibit. To bundle in repo: `python scripts/fetch_gguf.py` then push via Git LFS.
+Weights (`minicpm-8b-q4_k_m.gguf`, ~4.97 GB) download at startup. On ZeroGPU, MiniCPM loads **once** via the Gradio worker (not the background thread). Wait for `Warmup complete — curator is ready.` before the first exhibit.
 
 ## Run locally
 

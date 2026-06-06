@@ -37,7 +37,7 @@ from fastapi.staticfiles import StaticFiles
 
 from museum.card import render_card
 from museum.export import export_card_png
-from museum.model import kick_warmup
+from museum.model import kick_warmup, preload_curator_gpu
 from museum.prompts import format_counterfactual
 from museum.schema import create_exhibit
 
@@ -88,9 +88,19 @@ def open_room(user_line: str) -> dict[str, Any]:
         }
 
 
+def preload_curator() -> dict[str, Any]:
+    """Load model in the Gradio worker (scheduled at startup on ZeroGPU)."""
+    try:
+        preload_curator_gpu()
+        return {"ok": True}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)}
+
+
 # HF Spaces expects `demo` to be gr.Blocks (not gr.Server) for its file watcher.
 with gr.Blocks(title="Museum of Unlived Lives") as demo:
     gr.api(open_room, api_name="open_room")
+    gr.api(preload_curator, api_name="preload_curator")
 
 demo.queue(max_size=4)
 
