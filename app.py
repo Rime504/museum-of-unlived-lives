@@ -38,7 +38,7 @@ from fastapi.staticfiles import StaticFiles
 
 from museum.card import render_card
 from museum.export import export_card_png
-from museum.model import preload_model
+from museum.model import preload_model, warmup_enabled
 from museum.prompts import format_counterfactual
 from museum.schema import create_exhibit
 
@@ -95,8 +95,11 @@ with gr.Blocks(title="Museum of Unlived Lives") as demo:
 
 demo.queue(max_size=4)
 
-if os.environ.get("MUSEUM_WARMUP", "false").lower() in ("1", "true", "yes"):
-    threading.Thread(target=preload_model, daemon=True).start()
+
+@custom_app.on_event("startup")
+def _museum_warmup() -> None:
+    if warmup_enabled():
+        threading.Thread(target=preload_model, daemon=True).start()
 
 
 if __name__ == "__main__":

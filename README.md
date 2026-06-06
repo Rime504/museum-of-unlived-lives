@@ -71,14 +71,14 @@ git push hackathon main --force
 | `MUSEUM_N_GPU_LAYERS` | `-1` |
 | `HF_TOKEN` | token with read access (faster model download) |
 
-**Do not** set `MUSEUM_WARMUP=true` on ZeroGPU — the GPU is only allocated per request.
+**Do not** disable warmup on ZeroGPU unless debugging — weights download without GPU; only model load uses a short GPU slot.
 
 ### Using your $40 credits wisely
 
 | Do | Don't |
 |----|--------|
 | **ZeroGPU** as Space hardware (free tier + org PRO quota) | Leave **T4** running 24/7 ($0.40/hr ≈ $10/day) |
-| Let Space **sleep** when idle (48h default) | Enable warmup on ZeroGPU |
+| Let Space **sleep** when idle (48h default) | Disable warmup unless you know you need to |
 | Use credits only if you **exceed 40 min/day** ZeroGPU ($1 / 10 min) | Spin up multiple paid GPU Spaces |
 | Bundle GGUF via Git LFS once (optional) | Re-download 5 GB every cold start |
 
@@ -92,7 +92,7 @@ requirements.txt
 scripts/            Optional: fetch weights, tests
 ```
 
-Weights (`minicpm-8b-q4_k_m.gguf`, ~4.97 GB) download on first generation if not in repo. To bundle: `python scripts/fetch_gguf.py` then push via Git LFS.
+Weights (`minicpm-8b-q4_k_m.gguf`, ~4.97 GB) download automatically at **Space startup** (warmup). First `/open_room` is inference-only. To bundle in repo: `python scripts/fetch_gguf.py` then push via Git LFS.
 
 ## Run locally
 
@@ -203,7 +203,7 @@ Metal build uses the GPU via llama.cpp; no NVIDIA/CUDA needed.
 
 1. App starts at `http://localhost:7860` with the custom museum UI (not default Gradio widgets).
 2. Enter a counterfactual and click **Open this room**.
-3. First run downloads **MiniCPM4.1-8B Q4_K_M** (~4.97 GB) — watch the terminal for progress.
+3. First **startup** downloads **MiniCPM4.1-8B Q4_K_M** (~4.97 GB) — watch the Space logs until you see `Warmup complete — curator is ready.`
 4. You should get an exhibit card: title, narrative, artifact, mood colors, and PNG export.
 
 **Harmless log:** `n_ctx_seq (4096) < n_ctx_train (65536)` — expected; 4K context is intentional and does not limit quality for short exhibits.
@@ -222,7 +222,7 @@ Metal build uses the GPU via llama.cpp; no NVIDIA/CUDA needed.
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `MUSEUM_N_GPU_LAYERS` | `-1` | Full GPU offload when CUDA is available |
-| `MUSEUM_WARMUP` | `false` | Preload model at startup (T4 only; not ZeroGPU) |
+| `MUSEUM_WARMUP` | `true` | Download + load model at startup (set `false` to defer to first request) |
 | `MUSEUM_N_CTX` | `4096` | Context window (4K keeps inference fast) |
 
 Hardware: **ZeroGPU** on the hackathon org Space.

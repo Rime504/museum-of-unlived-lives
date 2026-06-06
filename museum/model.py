@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import threading
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
@@ -27,6 +28,10 @@ _minicpm: Any = None
 # llama-cpp-python 0.3.23 on HF does not accept chat_template_kwargs on completion calls.
 _STOP_SEQUENCES = ["<|im_end|>", "<|im_start|>", "<user>", "<assistant>", "</s>"]
 
+_preload_event = threading.Event()
+_preload_started = False
+_preload_lock = threading.Lock()
+
 F = TypeVar("F", bound=Callable[..., Any])
 
 
@@ -40,6 +45,10 @@ def _gpu_wrap(fn: F) -> F:
 
 def on_zero_gpu() -> bool:
     return spaces is not None and os.environ.get("SPACE_ID") is not None
+
+
+def warmup_enabled() -> bool:
+    return os.environ.get("MUSEUM_WARMUP", "true").lower() not in ("0", "false", "no")
 
 
 def _preload_cuda_libs() -> None:
@@ -62,7 +71,8 @@ def _preload_cuda_libs() -> None:
             ctypes.CDLL(lib_path, mode=ctypes.RTLD_GLOBAL)
 
 
-def get_weights_path() -> Path:
+def ensure_weights() -> Path:
+    """Download GGUF weights if missing. Does not require GPU."""
     if WEIGHTS_PATH.is_file():
         return WEIGHTS_PATH
 
@@ -77,6 +87,10 @@ def get_weights_path() -> Path:
     shutil.copy2(cached, WEIGHTS_PATH)
     print(f"Saved to {WEIGHTS_PATH}")
     return WEIGHTS_PATH
+
+
+def get_weights_path() -> Path:
+    return ensure_weights()
 
 
 def _init_minicpm() -> Any:
@@ -156,12 +170,28 @@ def ask_curator(
 
 
 @_gpu_wrap
+def _load_minicpm_on_gpu() -> None:
+    _init_minicpm()
+
+
+def wait_for_model(timeout: float = 900) -> None:
+    """Block until background warmup finishes (or times out)."""
+    if not warmup_enabled():
+        return
+    if not _preload_event.wait(timeout=timeout):
+        raise RuntimeError(
+            "The curator is still preparing the model — try again in a minute."
+        )
+
+
+@_gpu_wrap
 def _ask_curator_impl(
     counterfactual: str,
     *,
     repair: str | None = None,
     max_tokens: int = 800,
 ) -> str:
+    wait_for_model()
     is_repair = repair is not None
     if is_repair:
         messages = [
@@ -200,13 +230,28 @@ def _ask_curator_impl(
 
 
 def preload_model() -> None:
-    if on_zero_gpu():
-        print("Preload skipped on ZeroGPU — model loads on first /open_room request.")
-        return
+    """Download weights and load llama.cpp at startup so /open_room is inference-only."""
+    global _preload_started
+
+    with _preload_lock:
+        if _preload_started:
+            return
+        _preload_started = True
+
     try:
-        _init_minicpm()
+        print("Warmup: downloading weights if needed...")
+        ensure_weights()
+        if on_zero_gpu():
+            print("Warmup: loading MiniCPM on ZeroGPU...")
+            _load_minicpm_on_gpu()
+        else:
+            print("Warmup: loading MiniCPM...")
+            _init_minicpm()
+        print("Warmup complete — curator is ready.")
     except Exception as exc:
-        print(f"Preload skipped: {exc}")
+        print(f"Warmup failed (will retry on first /open_room): {exc}")
+    finally:
+        _preload_event.set()
 
 
 if __name__ == "__main__":
