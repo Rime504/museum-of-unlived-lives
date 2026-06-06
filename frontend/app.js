@@ -88,13 +88,6 @@ document.addEventListener("keydown", (e) => {
 let clientPromise = null;
 const getClient = () => (clientPromise ||= Client.connect(window.location.origin));
 
-/** Load MiniCPM into GPU while the visitor reads the page (ZeroGPU). */
-function preloadCurator() {
-  getClient()
-    .then((client) => client.predict("/preload_curator", {}))
-    .catch(() => {});
-}
-
 // ---------- stage renderers ----------
 function showCurating() {
   stage.innerHTML = `<div class="curating"><div class="orb"></div><p>Curating your exhibit&hellip;</p></div>`;
@@ -176,5 +169,4 @@ lineEl.addEventListener("keydown", (e) => {
 
 renderGallery();
 autoGrow();
-preloadCurator();
 getClient().catch(() => {}); // warm the Gradio connection
