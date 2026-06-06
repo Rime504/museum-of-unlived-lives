@@ -14,7 +14,7 @@ const stage = $("#stage");
 const grid = $("#grid");
 const countEl = $("#count");
 
-const STORE_KEY = "museum.rooms.v1";
+const STORE_KEY = "museum.rooms.v2";
 const MAX_ROOMS = 12;
 
 /** Rooms opened this page session — first load shows curator warmup copy. */
@@ -40,10 +40,15 @@ function loadRooms() {
 }
 
 function saveRooms(rooms) {
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(rooms.slice(0, MAX_ROOMS)));
-  } catch {
-    /* quota exceeded — keep the session going without persistence */
+  let list = rooms.slice(0, MAX_ROOMS);
+  // On quota errors, drop the oldest rooms and retry so the newest always persists.
+  while (list.length) {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(list));
+      return;
+    } catch {
+      list = list.slice(0, -1);
+    }
   }
 }
 
@@ -80,18 +85,18 @@ const lb = $("#lightbox");
 const lbBody = $("#lbBody");
 const lbImg = $("#lbImg");
 
-const openLightbox = async (room) => {
+const openLightbox = (room) => {
   if (room.card_html) {
+    // Live HTML/SVG card — vector, stays crisp at full size.
     lbBody.hidden = false;
     lbBody.innerHTML = room.card_html;
     lbImg.hidden = true;
     lbImg.removeAttribute("src");
-    await fontsReady();
   } else {
     lbBody.hidden = true;
     lbBody.innerHTML = "";
     lbImg.hidden = false;
-    lbImg.src = room.preview || room.png;
+    lbImg.src = room.png;
   }
   lb.classList.add("open");
 };
@@ -140,24 +145,13 @@ async function downloadCardPng(cardEl, title) {
   });
 }
 
-/** Small JPEG for the gallery grid (keeps localStorage under quota). */
+/** Small JPEG for the gallery grid (keeps localStorage under quota).
+ *  The lightbox renders the live card_html instead, so this stays tiny on purpose. */
 async function captureCardThumb(cardEl) {
   await fontsReady();
   const img = await snapdom.toJpg(cardEl, {
     scale: 0.5,
     quality: 0.82,
-    embedFonts: true,
-    backgroundColor: CARD_EXPORT_BG,
-  });
-  return img.src;
-}
-
-/** 2× JPEG for lightbox fallback when card_html is unavailable. */
-async function captureCardPreview(cardEl) {
-  await fontsReady();
-  const img = await snapdom.toJpg(cardEl, {
-    scale: 2,
-    quality: 0.9,
     embedFonts: true,
     backgroundColor: CARD_EXPORT_BG,
   });
@@ -236,18 +230,14 @@ async function showExhibit(data) {
     }
   });
 
-  // Gallery thumb + lightbox preview from the live card; fall back to server PNG.
+  // Small grid thumb only; lightbox renders the live card_html (crisp vector).
   let thumb = data.png;
-  let preview = data.png;
   try {
-    if (cardEl) {
-      thumb = await captureCardThumb(cardEl);
-      preview = await captureCardPreview(cardEl);
-    }
+    if (cardEl) thumb = await captureCardThumb(cardEl);
   } catch {
     /* keep server PNG */
   }
-  pushRoom({ title, png: thumb, preview, card_html: data.card_html });
+  pushRoom({ title, png: thumb, card_html: data.card_html });
 }
 
 // ---------- main action ----------
