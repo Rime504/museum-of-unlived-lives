@@ -1,6 +1,10 @@
 // Museum of Unlived Lives — frontend logic.
 // Talks to the gr.Server /open_room API via the official Gradio JS client.
 import { Client } from "https://esm.sh/@gradio/client@2.2.1";
+import { toPng, toJpeg } from "https://esm.sh/html-to-image@1.11.13";
+
+// Card surface color behind the rounded card when exported to an image.
+const CARD_EXPORT_BG = "#0e0c13";
 
 const $ = (sel) => document.querySelector(sel);
 const lineEl = $("#line");
@@ -91,6 +95,37 @@ document.addEventListener("keydown", (e) => {
 let clientPromise = null;
 const getClient = () => (clientPromise ||= Client.connect(window.location.origin));
 
+// ---------- capture the exact card shown on screen ----------
+/** Render a live .museum-card element to a PNG data URL (high-res). */
+async function captureCardPng(cardEl) {
+  await (document.fonts?.ready ?? Promise.resolve());
+  return toPng(cardEl, {
+    pixelRatio: 2,
+    backgroundColor: CARD_EXPORT_BG,
+    cacheBust: true,
+  });
+}
+
+/** Small JPEG for the gallery (keeps localStorage well under quota). */
+async function captureCardThumb(cardEl) {
+  await (document.fonts?.ready ?? Promise.resolve());
+  return toJpeg(cardEl, {
+    pixelRatio: 0.5,
+    quality: 0.82,
+    backgroundColor: CARD_EXPORT_BG,
+    cacheBust: true,
+  });
+}
+
+function triggerDownload(url, filename) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 // ---------- stage renderers ----------
 function showCurating(isFirstLoad = false) {
   const subcopy = isFirstLoad
@@ -109,17 +144,18 @@ function showNotice(msg) {
   stage.innerHTML = `<div class="notice">${escapeHtml(msg)}</div>`;
 }
 
-function showExhibit(data) {
-  const safeTitle = escapeAttr(data.title || "exhibit");
+async function showExhibit(data) {
+  const title = data.title || "exhibit";
+  const fileName = `${title}.png`;
   stage.innerHTML = `
     <div class="reveal">
       <div class="spotlight"></div>
       ${data.card_html}
       <div class="exhibit-actions">
-        <a class="ghost-btn" href="${data.png}" download="${safeTitle}.png">
+        <button class="ghost-btn" id="download" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
           Download card
-        </a>
+        </button>
         <button class="ghost-btn" id="again" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 12a8 8 0 1 1 2.3 5.6M4 20v-4h4"/></svg>
           Open another room
@@ -134,7 +170,30 @@ function showExhibit(data) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  pushRoom({ title: data.title, png: data.png });
+  const cardEl = stage.querySelector(".museum-card");
+  const downloadBtn = $("#download");
+
+  // Download = the exact card on screen (server PNG only as a last resort).
+  downloadBtn?.addEventListener("click", async () => {
+    downloadBtn.disabled = true;
+    try {
+      const png = cardEl ? await captureCardPng(cardEl) : data.png;
+      triggerDownload(png, fileName);
+    } catch {
+      if (data.png) triggerDownload(data.png, fileName);
+    } finally {
+      downloadBtn.disabled = false;
+    }
+  });
+
+  // Gallery thumbnail from the live card; fall back to the server PNG.
+  let thumb = data.png;
+  try {
+    if (cardEl) thumb = await captureCardThumb(cardEl);
+  } catch {
+    /* keep server PNG */
+  }
+  pushRoom({ title, png: thumb });
 }
 
 // ---------- main action ----------
