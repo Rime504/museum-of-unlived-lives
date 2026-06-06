@@ -105,12 +105,16 @@ async function fontsReady() {
   }
 }
 
-/** Download a vector SVG of the live .museum-card — text stays sharp at any zoom. */
-async function downloadCardSvg(cardEl, title) {
+// 4× PNG ≈ ~1600px wide — sharp on Instagram/X feeds; PNG uploads everywhere SVG can't.
+const CARD_EXPORT_SCALE = 4;
+
+/** Social-ready PNG: exact on-screen card, transparent rounded corners, crisp text. */
+async function downloadCardPng(cardEl, title) {
   await fontsReady();
   await snapdom.download(cardEl, {
-    format: "svg",
+    format: "png",
     filename: title,
+    scale: CARD_EXPORT_SCALE,
     embedFonts: true,
     backgroundColor: "transparent",
   });
@@ -157,7 +161,7 @@ function showNotice(msg) {
 
 async function showExhibit(data) {
   const title = data.title || "exhibit";
-  const fileName = `${title}.svg`;
+  const fileName = `${title}.png`;
   stage.innerHTML = `
     <div class="reveal">
       <div class="spotlight"></div>
@@ -189,7 +193,7 @@ async function showExhibit(data) {
     downloadBtn.disabled = true;
     try {
       if (cardEl) {
-        await downloadCardSvg(cardEl, title);
+        await downloadCardPng(cardEl, title);
       } else if (data.png) {
         triggerDownload(data.png, fileName);
       }
