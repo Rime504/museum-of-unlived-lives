@@ -28,9 +28,9 @@ _minicpm: Any = None
 # llama-cpp-python 0.3.23 on HF does not accept chat_template_kwargs on completion calls.
 _STOP_SEQUENCES = ["<|im_end|>", "<|im_start|>", "<user>", "<assistant>", "</s>"]
 
-_preload_event = threading.Event()
-_preload_started = False
-_preload_lock = threading.Lock()
+_warmup_lock = threading.Lock()
+_warmup_started = False
+_weights_ready = threading.Event()
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -39,7 +39,6 @@ def _gpu_wrap(fn: F) -> F:
     """Request a ZeroGPU slot on HF org Spaces; no-op elsewhere."""
     if spaces is None:
         return fn
-    # First call may download ~5 GB + load weights — allow headroom.
     return spaces.GPU(duration=180)(fn)  # type: ignore[return-value]
 
 
@@ -80,12 +79,12 @@ def ensure_weights() -> Path:
     if alt.is_file():
         return alt
 
-    print(f"Pulling {HF_FILENAME} from {HF_REPO} (~4.97 GB)...")
+    print(f"Pulling {HF_FILENAME} from {HF_REPO} (~4.97 GB)...", flush=True)
     from huggingface_hub import hf_hub_download
 
     cached = hf_hub_download(repo_id=HF_REPO, filename=HF_FILENAME)
     shutil.copy2(cached, WEIGHTS_PATH)
-    print(f"Saved to {WEIGHTS_PATH}")
+    print(f"Saved to {WEIGHTS_PATH}", flush=True)
     return WEIGHTS_PATH
 
 
@@ -102,6 +101,7 @@ def _init_minicpm() -> Any:
     from llama_cpp import Llama
 
     path = get_weights_path()
+    print("Loading MiniCPM into memory...", flush=True)
     _minicpm = Llama(
         model_path=str(path),
         n_gpu_layers=int(os.environ.get("MUSEUM_N_GPU_LAYERS", "-1")),
@@ -109,6 +109,7 @@ def _init_minicpm() -> Any:
         n_threads=int(os.environ.get("MUSEUM_N_THREADS", "4")),
         verbose=False,
     )
+    print("MiniCPM loaded.", flush=True)
     return _minicpm
 
 
@@ -169,18 +170,15 @@ def ask_curator(
     return _ask_curator_impl(counterfactual, repair=repair, max_tokens=max_tokens)
 
 
-@_gpu_wrap
-def _load_minicpm_on_gpu() -> None:
-    _init_minicpm()
-
-
-def wait_for_model(timeout: float = 900) -> None:
-    """Block until background warmup finishes (or times out)."""
+def wait_for_weights(timeout: float = 7200) -> None:
+    """Wait for background weight download; no-op once weights are on disk."""
+    if WEIGHTS_PATH.is_file() or (ROOT / HF_FILENAME).is_file():
+        return
     if not warmup_enabled():
         return
-    if not _preload_event.wait(timeout=timeout):
+    if not _weights_ready.wait(timeout=timeout):
         raise RuntimeError(
-            "The curator is still preparing the model — try again in a minute."
+            "The curator is still downloading the model weights — try again shortly."
         )
 
 
@@ -191,7 +189,7 @@ def _ask_curator_impl(
     repair: str | None = None,
     max_tokens: int = 800,
 ) -> str:
-    wait_for_model()
+    wait_for_weights()
     is_repair = repair is not None
     if is_repair:
         messages = [
@@ -204,7 +202,6 @@ def _ask_curator_impl(
     llm = _init_minicpm()
     temperature = 0.4
 
-    # Prefer raw string completion — stable on HF; no hidden OpenAI-style kwargs.
     text = _raw_complete(
         llm,
         messages,
@@ -230,28 +227,39 @@ def _ask_curator_impl(
 
 
 def preload_model() -> None:
-    """Download weights and load llama.cpp at startup so /open_room is inference-only."""
-    global _preload_started
-
-    with _preload_lock:
-        if _preload_started:
-            return
-        _preload_started = True
-
+    """Download weights at startup; load into memory locally (ZeroGPU loads on first request)."""
     try:
-        print("Warmup: downloading weights if needed...")
+        print("Warmup: downloading weights if needed...", flush=True)
         ensure_weights()
-        if on_zero_gpu():
-            print("Warmup: loading MiniCPM on ZeroGPU...")
-            _load_minicpm_on_gpu()
-        else:
-            print("Warmup: loading MiniCPM...")
+        print("Warmup: weights ready on disk.", flush=True)
+        if not on_zero_gpu():
             _init_minicpm()
-        print("Warmup complete — curator is ready.")
+            print("Warmup complete — curator is ready.", flush=True)
+        else:
+            print(
+                "Warmup: weights cached — MiniCPM loads on first /open_room (ZeroGPU).",
+                flush=True,
+            )
     except Exception as exc:
-        print(f"Warmup failed (will retry on first /open_room): {exc}")
+        print(f"Warmup failed (will retry on /open_room): {exc}", flush=True)
     finally:
-        _preload_event.set()
+        _weights_ready.set()
+
+
+def kick_warmup() -> None:
+    """Start background warmup once — safe to call from app import (HF Spaces)."""
+    global _warmup_started
+
+    if not warmup_enabled():
+        _weights_ready.set()
+        return
+
+    with _warmup_lock:
+        if _warmup_started:
+            return
+        _warmup_started = True
+
+    threading.Thread(target=preload_model, daemon=True).start()
 
 
 if __name__ == "__main__":

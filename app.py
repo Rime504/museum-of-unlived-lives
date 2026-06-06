@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio.base_events as _base_events
 import base64
 import os
-import threading
 from pathlib import Path
 from typing import Any
 
@@ -38,7 +37,7 @@ from fastapi.staticfiles import StaticFiles
 
 from museum.card import render_card
 from museum.export import export_card_png
-from museum.model import preload_model, warmup_enabled
+from museum.model import kick_warmup
 from museum.prompts import format_counterfactual
 from museum.schema import create_exhibit
 
@@ -95,11 +94,9 @@ with gr.Blocks(title="Museum of Unlived Lives") as demo:
 
 demo.queue(max_size=4)
 
-
-@custom_app.on_event("startup")
-def _museum_warmup() -> None:
-    if warmup_enabled():
-        threading.Thread(target=preload_model, daemon=True).start()
+# HF Spaces imports app.py directly — custom_app.on_event("startup") never fires.
+# Kick weight download as soon as the module loads.
+kick_warmup()
 
 
 if __name__ == "__main__":
