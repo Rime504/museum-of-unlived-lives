@@ -42,6 +42,26 @@ def on_zero_gpu() -> bool:
     return spaces is not None and os.environ.get("SPACE_ID") is not None
 
 
+def _preload_cuda_libs() -> None:
+    """Expose pip-installed CUDA runtime to llama.cpp on ZeroGPU (no system libcudart)."""
+    try:
+        import ctypes
+        import os
+
+        import nvidia.cublas
+        import nvidia.cuda_runtime
+    except ImportError:
+        return
+
+    for module, lib_name in (
+        (nvidia.cublas, "libcublas.so.12"),
+        (nvidia.cuda_runtime, "libcudart.so.12"),
+    ):
+        lib_path = os.path.join(module.__path__[0], "lib", lib_name)
+        if os.path.isfile(lib_path):
+            ctypes.CDLL(lib_path, mode=ctypes.RTLD_GLOBAL)
+
+
 def get_weights_path() -> Path:
     if WEIGHTS_PATH.is_file():
         return WEIGHTS_PATH
@@ -64,6 +84,7 @@ def _init_minicpm() -> Any:
     if _minicpm is not None:
         return _minicpm
 
+    _preload_cuda_libs()
     from llama_cpp import Llama
 
     path = get_weights_path()

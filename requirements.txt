@@ -2,5 +2,7 @@ gradio==6.16.0
 spaces>=0.43.0
 --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
 llama-cpp-python==0.3.23
+nvidia-cuda-runtime-cu12
+nvidia-cublas-cu12
 Pillow>=10.3.0
 huggingface_hub>=0.24.0
