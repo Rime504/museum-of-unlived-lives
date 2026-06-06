@@ -63,7 +63,7 @@ function renderGallery() {
     fig.innerHTML = `
       <img src="${room.png}" alt="${escapeAttr(room.title)}" loading="lazy" />
       <figcaption>${escapeHtml(room.title)}</figcaption>`;
-    fig.addEventListener("click", () => openLightbox(room.png));
+    fig.addEventListener("click", () => openLightbox(room));
     grid.appendChild(fig);
   }
 }
@@ -77,12 +77,31 @@ function pushRoom(room) {
 
 // ---------- lightbox ----------
 const lb = $("#lightbox");
+const lbBody = $("#lbBody");
 const lbImg = $("#lbImg");
-const openLightbox = (src) => {
-  lbImg.src = src;
+
+const openLightbox = (room) => {
+  if (room.card_html) {
+    lbBody.hidden = false;
+    lbBody.innerHTML = room.card_html;
+    lbImg.hidden = true;
+    lbImg.removeAttribute("src");
+  } else {
+    lbBody.hidden = true;
+    lbBody.innerHTML = "";
+    lbImg.hidden = false;
+    lbImg.src = room.png;
+  }
   lb.classList.add("open");
 };
-const closeLightbox = () => lb.classList.remove("open");
+
+const closeLightbox = () => {
+  lb.classList.remove("open");
+  lbBody.innerHTML = "";
+  lbBody.hidden = true;
+  lbImg.hidden = true;
+  lbImg.removeAttribute("src");
+};
 
 $("#lbClose").addEventListener("click", closeLightbox);
 lb.addEventListener("click", (e) => {
@@ -211,7 +230,7 @@ async function showExhibit(data) {
   } catch {
     /* keep server PNG */
   }
-  pushRoom({ title, png: thumb });
+  pushRoom({ title, png: thumb, card_html: data.card_html });
 }
 
 // ---------- main action ----------
