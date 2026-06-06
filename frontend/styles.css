@@ -261,20 +261,25 @@ body {
 .lightbox {
   position: fixed; inset: 0; z-index: 50; display: none; place-items: center;
   padding: 56px 20px 32px; overflow-y: auto;
-  background: rgba(5, 4, 8, 0.92); backdrop-filter: blur(10px); animation: fadeIn 0.25s ease both;
+  background: transparent; animation: fadeIn 0.25s ease both;
+}
+.lightbox::before {
+  content: ""; position: fixed; inset: 0; z-index: -1;
+  background: rgba(5, 4, 8, 0.92); backdrop-filter: blur(12px);
 }
 .lightbox.open { display: grid; }
 .lightbox-body {
-  width: min(92vw, var(--maxw));
-  animation: rise 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  position: relative; z-index: 1; width: min(92vw, var(--maxw));
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  animation: fadeIn 0.3s ease both;
 }
 .lightbox-body .museum-card {
   box-shadow: 0 48px 120px -36px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(0, 0, 0, 0.45);
 }
 .lightbox img {
-  width: min(92vw, var(--maxw)); height: auto; border-radius: 12px;
-  border: 1px solid var(--line); box-shadow: 0 40px 100px -30px #000;
-  image-rendering: auto;
+  position: relative; z-index: 1; width: min(92vw, var(--maxw)); height: auto;
+  border-radius: 12px; border: 1px solid var(--line);
+  box-shadow: 0 40px 100px -30px #000; animation: fadeIn 0.3s ease both;
 }
 .lightbox .lb-close {
   position: absolute; top: 22px; right: 26px; font-size: 30px; color: var(--muted);
