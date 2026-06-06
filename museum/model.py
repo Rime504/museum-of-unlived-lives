@@ -1,14 +1,20 @@
 # MiniCPM on disk (or downloaded once) → exhibit JSON via llama.cpp.
+# On HF ZeroGPU Spaces, inference runs inside @spaces.GPU (GPU only when generating).
 
 from __future__ import annotations
 
 import os
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, TypeVar
 
 from museum.grammar import get_exhibit_grammar
 from museum.prompts import build_messages
+
+try:
+    import spaces
+except ImportError:
+    spaces = None  # local dev / dedicated GPU Spaces
 
 ROOT = Path(__file__).resolve().parent.parent
 WEIGHTS_FILE = "minicpm-8b-q4_k_m.gguf"
@@ -20,6 +26,20 @@ _minicpm: Any = None
 
 # llama-cpp-python 0.3.23 on HF does not accept chat_template_kwargs on completion calls.
 _STOP_SEQUENCES = ["<|im_end|>", "<|im_start|>", "<user>", "<assistant>", "</s>"]
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def _gpu_wrap(fn: F) -> F:
+    """Request a ZeroGPU slot on HF org Spaces; no-op elsewhere."""
+    if spaces is None:
+        return fn
+    # First call may download ~5 GB + load weights — allow headroom.
+    return spaces.GPU(duration=180)(fn)  # type: ignore[return-value]
+
+
+def on_zero_gpu() -> bool:
+    return spaces is not None and os.environ.get("SPACE_ID") is not None
 
 
 def get_weights_path() -> Path:
@@ -111,6 +131,16 @@ def ask_curator(
     repair: str | None = None,
     max_tokens: int = 800,
 ) -> str:
+    return _ask_curator_impl(counterfactual, repair=repair, max_tokens=max_tokens)
+
+
+@_gpu_wrap
+def _ask_curator_impl(
+    counterfactual: str,
+    *,
+    repair: str | None = None,
+    max_tokens: int = 800,
+) -> str:
     is_repair = repair is not None
     if is_repair:
         messages = [
@@ -149,6 +179,9 @@ def ask_curator(
 
 
 def preload_model() -> None:
+    if on_zero_gpu():
+        print("Preload skipped on ZeroGPU — model loads on first /open_room request.")
+        return
     try:
         _init_minicpm()
     except Exception as exc:
