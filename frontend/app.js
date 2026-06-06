@@ -105,14 +105,12 @@ async function fontsReady() {
   }
 }
 
-/** Download a high-res PNG of the live .museum-card (matches the screen).
- *  Transparent background so the 18px rounded corners stay curved (no black box). */
-async function downloadCardPng(cardEl, title) {
+/** Download a vector SVG of the live .museum-card — text stays sharp at any zoom. */
+async function downloadCardSvg(cardEl, title) {
   await fontsReady();
   await snapdom.download(cardEl, {
-    format: "png",
+    format: "svg",
     filename: title,
-    scale: 2,
     embedFonts: true,
     backgroundColor: "transparent",
   });
@@ -159,7 +157,7 @@ function showNotice(msg) {
 
 async function showExhibit(data) {
   const title = data.title || "exhibit";
-  const fileName = `${title}.png`;
+  const fileName = `${title}.svg`;
   stage.innerHTML = `
     <div class="reveal">
       <div class="spotlight"></div>
@@ -191,7 +189,7 @@ async function showExhibit(data) {
     downloadBtn.disabled = true;
     try {
       if (cardEl) {
-        await downloadCardPng(cardEl, title);
+        await downloadCardSvg(cardEl, title);
       } else if (data.png) {
         triggerDownload(data.png, fileName);
       }
