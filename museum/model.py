@@ -183,6 +183,13 @@ def wait_for_weights(timeout: float = 7200) -> None:
 
 
 @_gpu_wrap
+def preload_curator_gpu() -> None:
+    """Load MiniCPM into GPU memory (ZeroGPU-safe — call from Gradio request path)."""
+    wait_for_weights()
+    _init_minicpm()
+
+
+@_gpu_wrap
 def _ask_curator_impl(
     counterfactual: str,
     *,
@@ -227,19 +234,25 @@ def _ask_curator_impl(
 
 
 def preload_model() -> None:
-    """Download weights at startup; load into memory locally (ZeroGPU loads on first request)."""
+    """Download weights at startup, then load MiniCPM (GPU load on ZeroGPU when possible)."""
     try:
         print("Warmup: downloading weights if needed...", flush=True)
         ensure_weights()
         print("Warmup: weights ready on disk.", flush=True)
-        if not on_zero_gpu():
+        if on_zero_gpu():
+            print("Warmup: loading MiniCPM on ZeroGPU...", flush=True)
+            try:
+                preload_curator_gpu()
+                print("Warmup complete — curator is ready.", flush=True)
+            except Exception as gpu_exc:
+                print(
+                    f"Warmup: GPU load deferred ({gpu_exc}) — "
+                    "will load when the page opens or on first /open_room.",
+                    flush=True,
+                )
+        else:
             _init_minicpm()
             print("Warmup complete — curator is ready.", flush=True)
-        else:
-            print(
-                "Warmup: weights cached — MiniCPM loads on first /open_room (ZeroGPU).",
-                flush=True,
-            )
     except Exception as exc:
         print(f"Warmup failed (will retry on /open_room): {exc}", flush=True)
     finally:
