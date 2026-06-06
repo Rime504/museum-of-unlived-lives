@@ -92,7 +92,7 @@ requirements.txt
 scripts/            Optional: fetch weights, tests
 ```
 
-Weights (`minicpm-8b-q4_k_m.gguf`, ~4.97 GB) download at startup. On ZeroGPU, MiniCPM loads **once** via the Gradio worker (not the background thread). Wait for `Warmup complete — curator is ready.` before the first exhibit.
+Weights (`minicpm-8b-q4_k_m.gguf`, ~4.97 GB) download at startup. On **ZeroGPU**, GPU memory cannot be pre-warmed — MiniCPM loads **once** on the first `/open_room` (~1–2 min), then later rooms are faster. On local GPU/T4, full warmup loads at startup.
 
 ## Run locally
 
@@ -203,7 +203,7 @@ Metal build uses the GPU via llama.cpp; no NVIDIA/CUDA needed.
 
 1. App starts at `http://localhost:7860` with the custom museum UI (not default Gradio widgets).
 2. Enter a counterfactual and click **Open this room**.
-3. On **startup**, weights download and MiniCPM loads once — logs end with `Warmup complete — curator is ready.` First **Open this room** is then inference (~30–60 s).
+3. On **startup**, weights download — logs show `Warmup: weights ready on disk.` On ZeroGPU, first **Open this room** loads MiniCPM once (~1–2 min) then generates; later rooms are faster.
 4. You should get an exhibit card: title, narrative, artifact, mood colors, and PNG export.
 
 **Harmless log:** `n_ctx_seq (4096) < n_ctx_train (65536)` — expected; 4K context is intentional and does not limit quality for short exhibits.

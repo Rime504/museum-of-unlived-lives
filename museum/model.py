@@ -188,50 +188,6 @@ def wait_for_weights(timeout: float = 7200) -> None:
 
 
 @_gpu_wrap
-def preload_curator_gpu() -> None:
-    """Load MiniCPM into GPU memory — must run via Gradio/ZeroGPU request path."""
-    wait_for_weights()
-    _init_minicpm()
-
-
-def _schedule_gradio_gpu_preload() -> None:
-    """Load model through Gradio API so it lands in the same worker as /open_room."""
-    import time
-    import urllib.error
-    import urllib.request
-
-    _weights_ready.wait()
-
-    port = os.environ.get("PORT", "7860")
-    base = f"http://127.0.0.1:{port}"
-
-    for _ in range(90):
-        try:
-            urllib.request.urlopen(base, timeout=2)
-            break
-        except (OSError, urllib.error.URLError):
-            time.sleep(2)
-    else:
-        print(
-            "Warmup: Gradio not ready — MiniCPM loads on first /open_room.",
-            flush=True,
-        )
-        return
-
-    try:
-        from gradio_client import Client
-
-        print("Warmup: loading MiniCPM via Gradio (ZeroGPU worker)...", flush=True)
-        Client(base, verbose=False).predict(api_name="/preload_curator")
-        print("Warmup complete — curator is ready.", flush=True)
-    except Exception as exc:
-        print(
-            f"Warmup: Gradio GPU load failed ({exc}) — loads on first /open_room.",
-            flush=True,
-        )
-
-
-@_gpu_wrap
 def _ask_curator_impl(
     counterfactual: str,
     *,
@@ -276,13 +232,16 @@ def _ask_curator_impl(
 
 
 def preload_model() -> None:
-    """Download weights at startup; on ZeroGPU, GPU load goes through Gradio API."""
+    """Download weights at startup. ZeroGPU loads the model once on first /open_room."""
     try:
         print("Warmup: downloading weights if needed...", flush=True)
         ensure_weights()
         print("Warmup: weights ready on disk.", flush=True)
         if on_zero_gpu():
-            threading.Thread(target=_schedule_gradio_gpu_preload, daemon=True).start()
+            print(
+                "Warmup complete — MiniCPM loads once on first /open_room (ZeroGPU).",
+                flush=True,
+            )
         else:
             _init_minicpm()
             print("Warmup complete — curator is ready.", flush=True)

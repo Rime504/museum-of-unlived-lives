@@ -90,7 +90,7 @@ const getClient = () => (clientPromise ||= Client.connect(window.location.origin
 
 // ---------- stage renderers ----------
 function showCurating() {
-  stage.innerHTML = `<div class="curating"><div class="orb"></div><p>Curating your exhibit&hellip;</p></div>`;
+  stage.innerHTML = `<div class="curating"><div class="orb"></div><p>Curating your exhibit&hellip;</p><p class="curating-hint">First room after startup may take 1&ndash;2 min while the curator wakes up.</p></div>`;
 }
 
 function showNotice(msg) {
