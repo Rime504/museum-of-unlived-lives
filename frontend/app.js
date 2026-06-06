@@ -12,6 +12,9 @@ const countEl = $("#count");
 const STORE_KEY = "museum.rooms.v1";
 const MAX_ROOMS = 12;
 
+/** Rooms opened this page session — first load shows curator warmup copy. */
+let roomsOpenedThisSession = 0;
+
 // ---------- small helpers ----------
 const escapeHtml = (s) =>
   (s || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
@@ -89,8 +92,17 @@ let clientPromise = null;
 const getClient = () => (clientPromise ||= Client.connect(window.location.origin));
 
 // ---------- stage renderers ----------
-function showCurating() {
-  stage.innerHTML = `<div class="curating"><div class="orb"></div><p>Curating your exhibit&hellip;</p><p class="curating-hint">First room after startup may take 1&ndash;2 min while the curator wakes up.</p></div>`;
+function showCurating(isFirstLoad = false) {
+  const subcopy = isFirstLoad
+    ? `<p class="curating-sub">The curator is opening the archive for the first time this session. Please allow about a minute.</p>`
+    : "";
+
+  stage.innerHTML = `
+    <div class="curating" role="status" aria-live="polite" aria-busy="true">
+      <div class="orb" aria-hidden="true"></div>
+      <p class="curating-title">Curating your exhibit&hellip;</p>
+      ${subcopy}
+    </div>`;
 }
 
 function showNotice(msg) {
@@ -137,7 +149,8 @@ async function openRoom() {
   openBtn.disabled = true;
   const originalLabel = openBtn.textContent;
   openBtn.innerHTML = 'Opening the room<span class="dots"></span>';
-  showCurating();
+  const isFirstLoad = roomsOpenedThisSession === 0;
+  showCurating(isFirstLoad);
 
   try {
     const client = await getClient();
@@ -145,6 +158,7 @@ async function openRoom() {
     const payload = Array.isArray(res?.data) ? res.data[0] : res?.data ?? res;
 
     if (payload && payload.ok) {
+      roomsOpenedThisSession += 1;
       showExhibit(payload);
     } else {
       showNotice((payload && payload.error) || "The museum could not open this room.");

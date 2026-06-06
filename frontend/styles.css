@@ -141,17 +141,23 @@ body {
 .stage { margin-top: clamp(28px, 4.5vh, 52px); min-height: 8px; }
 
 .curating {
-  border: 1px solid var(--line-soft); border-radius: 16px; padding: 40px 26px; text-align: center;
+  border: 1px solid var(--line-soft); border-radius: 16px; padding: 44px 28px; text-align: center;
   background: linear-gradient(180deg, var(--panel), var(--ink-2)); animation: fadeIn 0.5s ease both;
 }
 .curating .orb {
-  width: 42px; height: 42px; margin: 0 auto 18px; border-radius: 50%;
+  width: 40px; height: 40px; margin: 0 auto 20px; border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, var(--violet-soft), transparent 70%);
   box-shadow: 0 0 40px var(--glow); animation: pulse 1.8s ease-in-out infinite;
 }
 @keyframes pulse { 0%, 100% { transform: scale(0.85); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
-.curating p { font-family: var(--serif); font-style: italic; color: var(--muted); font-size: 19px; margin: 0; }
-.curating-hint { font-size: 14px !important; margin-top: 10px !important; opacity: 0.75; font-style: normal !important; font-family: var(--sans) !important; }
+.curating-title {
+  font-family: var(--serif); font-style: italic; color: var(--text); font-size: 20px;
+  margin: 0; letter-spacing: 0.02em;
+}
+.curating-sub {
+  font-family: var(--sans); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--faint); margin: 14px 0 0; max-width: 36ch; margin-inline: auto; line-height: 1.55;
+}
 
 .notice {
   border: 1px solid rgba(201, 168, 106, 0.3); border-radius: 12px; padding: 18px 22px;
