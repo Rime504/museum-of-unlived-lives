@@ -15,12 +15,14 @@ license: mit
 
 *Some lives we live. Most we only imagine.*
 
-Enter a counterfactual — a path you did not take. The curator builds a museum exhibit: title, narrative, artifact, and abstract visual style. Each result is saved to your personal gallery.
+Enter a counterfactual — a path you did not take. The curator builds a museum exhibit: title, narrative, artifact, mood palette, and abstract SVG geometry. Results save to your personal gallery in the browser; download any card as a high-res PNG.
+
+**Built by [false200](https://github.com/false200) and [Rime504](https://github.com/Rime504)**
 
 **Demo:** [build-small-hackathon/museum-of-unlived-lives](https://huggingface.co/spaces/build-small-hackathon/museum-of-unlived-lives)  
 **Code:** [github.com/Rime504/museum-of-unlived-lives](https://github.com/Rime504/museum-of-unlived-lives)
 
-**Model:** [MiniCPM4.1-8B Q4_K_M](https://huggingface.co/openbmb/MiniCPM4.1-8B-GGUF) · llama.cpp · `@spaces.GPU` on ZeroGPU
+**Model:** [MiniCPM4.1-8B Q4_K_M](https://huggingface.co/openbmb/MiniCPM4.1-8B-GGUF) · llama.cpp · fully local inference (no external LLM API)
 
 ## Architecture
 
@@ -37,7 +39,7 @@ flowchart LR
 
   subgraph museum["museum/"]
     SCHEMA["schema.py<br/>JSON validate"]
-    MODEL["model.py<br/>MiniCPM + @spaces.GPU"]
+    MODEL["model.py<br/>MiniCPM"]
     CARD["card.py + shapes.py<br/>HTML + SVG"]
     EXPORT["export.py<br/>PNG card"]
   end
@@ -51,36 +53,7 @@ flowchart LR
   API -->|"card_html + png"| UI
 ```
 
-Custom HTML/CSS frontend — no default Gradio UI. Inference runs locally via llama.cpp; no external LLM API.
-
-## Deploy on Build Small Hackathon org (ZeroGPU)
-
-1. Create Space under **build-small-hackathon** → SDK **Gradio** → template **Blank**
-2. **Settings → Hardware → ZeroGPU** (free with org PRO — 40 min GPU/day)
-3. Push this repo:
-
-```bash
-git remote add hackathon https://huggingface.co/spaces/build-small-hackathon/museum-of-unlived-lives
-git push hackathon main --force
-```
-
-4. Optional secrets (Settings → Variables and secrets):
-
-| Secret | Value |
-|--------|--------|
-| `MUSEUM_N_GPU_LAYERS` | `-1` |
-| `HF_TOKEN` | token with read access (faster model download) |
-
-**Do not** disable warmup on ZeroGPU unless debugging — weights download without GPU; only model load uses a short GPU slot.
-
-### Using your $40 credits wisely
-
-| Do | Don't |
-|----|--------|
-| **ZeroGPU** as Space hardware (free tier + org PRO quota) | Leave **T4** running 24/7 ($0.40/hr ≈ $10/day) |
-| Let Space **sleep** when idle (48h default) | Disable warmup unless you know you need to |
-| Use credits only if you **exceed 40 min/day** ZeroGPU ($1 / 10 min) | Spin up multiple paid GPU Spaces |
-| Bundle GGUF via Git LFS once (optional) | Re-download 5 GB every cold start |
+Custom HTML/CSS frontend — no default Gradio UI. Eight abstract shapes are assigned server-side per counterfactual; MiniCPM writes the copy to match. Card export uses SnapDOM in the browser for pixel-accurate PNGs.
 
 ## Repository
 
@@ -92,13 +65,11 @@ requirements.txt
 scripts/            Optional: fetch weights, tests
 ```
 
-Weights (`minicpm-8b-q4_k_m.gguf`, ~4.97 GB) download at startup. On **ZeroGPU**, GPU memory cannot be pre-warmed — MiniCPM loads **once** on the first `/open_room` (~1–2 min), then later rooms are faster. On local GPU/T4, full warmup loads at startup.
+Weights (`minicpm-8b-q4_k_m.gguf`, ~4.97 GB) download on first run. On a cold start, the first exhibit may take 1–2 minutes while the model loads; later rooms are faster.
 
 ## Run locally
 
 **Requirements:** Python 3.10 or 3.11, ~6 GB free disk (model + deps), internet on first run (model download).
-
-Pick the path that matches your machine:
 
 | Path | Best for | Speed |
 |------|----------|-------|
@@ -108,7 +79,7 @@ Pick the path that matches your machine:
 
 All paths use the same app — only `llama-cpp-python` install differs. The `spaces` package is optional locally (ZeroGPU decorator becomes a no-op).
 
-### Quick start (every path)
+### Quick start
 
 ```bash
 git clone https://github.com/Rime504/museum-of-unlived-lives.git
@@ -133,8 +104,6 @@ Open **http://localhost:7860** and try:
 
 ### A — GPU (Linux / Windows + NVIDIA)
 
-Use the repo’s default `requirements.txt` (CUDA 12.4 wheel + pip CUDA runtime for compatibility):
-
 ```bash
 pip install -r requirements.txt
 python app.py
@@ -147,7 +116,7 @@ export MUSEUM_N_GPU_LAYERS=-1   # full GPU offload (Windows: set MUSEUM_N_GPU_LA
 export MUSEUM_N_CTX=4096
 ```
 
-**If you see** `libcudart.so.12: cannot open shared object file` on Linux: the repo already ships `nvidia-cuda-runtime-cu12` and preloads libs in `museum/model.py`. Reinstall deps:
+**If you see** `libcudart.so.12: cannot open shared object file` on Linux: the repo ships `nvidia-cuda-runtime-cu12` and preloads libs in `museum/model.py`. Reinstall deps:
 
 ```bash
 pip install --force-reinstall -r requirements.txt
@@ -180,13 +149,11 @@ $env:MUSEUM_N_GPU_LAYERS="0"
 python app.py
 ```
 
-Expect **3–8 minutes** per exhibit on a typical laptop CPU. It works — just be patient on the first “Open this room” click while the ~5 GB model downloads and loads.
+Expect **3–8 minutes** per exhibit on a typical laptop CPU.
 
 ---
 
 ### C — Mac (Apple Silicon)
-
-Install Metal-accelerated `llama-cpp-python`, then the rest of the deps:
 
 ```bash
 pip install gradio==6.16.0 spaces>=0.43.0 Pillow>=10.3.0 huggingface_hub>=0.24.0
@@ -203,10 +170,10 @@ Metal build uses the GPU via llama.cpp; no NVIDIA/CUDA needed.
 
 1. App starts at `http://localhost:7860` with the custom museum UI (not default Gradio widgets).
 2. Enter a counterfactual and click **Open this room**.
-3. On **startup**, weights download — logs show `Warmup: weights ready on disk.` On ZeroGPU, first **Open this room** loads MiniCPM once (~1–2 min) then generates; later rooms are faster.
-4. You should get an exhibit card: title, narrative, artifact, mood colors, and PNG export.
+3. On startup, weights download — logs show `Warmup: weights ready on disk.`
+4. You get an exhibit card: title, narrative, artifact, mood colors, abstract shape, and **Download card** (PNG).
 
-**Harmless log:** `n_ctx_seq (4096) < n_ctx_train (65536)` — expected; 4K context is intentional and does not limit quality for short exhibits.
+**Harmless log:** `n_ctx_seq (4096) < n_ctx_train (65536)` — expected; 4K context is intentional.
 
 **Troubleshooting**
 
@@ -215,14 +182,16 @@ Metal build uses the GPU via llama.cpp; no NVIDIA/CUDA needed.
 | `libcudart.so.12` / CUDA load error | Path **A**: reinstall `requirements.txt`. Path **B**: CPU install + `MUSEUM_N_GPU_LAYERS=0`. |
 | Import error on Mac | Use Path **C** (Metal), not CUDA `requirements.txt`. |
 | Very slow generation | Normal on CPU (Path **B**). Use GPU or Mac Metal for speed. |
-| Empty or invalid JSON | Retry once; model occasionally needs a second pass (schema repair handles this). |
+| Empty or invalid JSON | Retry once; schema repair handles occasional bad output. |
 
-## Space settings
+## Environment variables
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `MUSEUM_N_GPU_LAYERS` | `-1` | Full GPU offload when CUDA is available |
-| `MUSEUM_WARMUP` | `true` | Download + load model at startup (set `false` to defer to first request) |
-| `MUSEUM_N_CTX` | `4096` | Context window (4K keeps inference fast) |
+| `MUSEUM_N_GPU_LAYERS` | `-1` | Full GPU offload when CUDA is available (`0` = CPU only) |
+| `MUSEUM_WARMUP` | `true` | Download weights at startup |
+| `MUSEUM_N_CTX` | `4096` | Context window |
 
-Hardware: **ZeroGPU** on the hackathon org Space.
+## License
+
+MIT
