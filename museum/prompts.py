@@ -17,10 +17,25 @@ a concept directly. Let the depth live in the insight, not in jargon.
 
 Return ONLY one JSON object. Start with { immediately. No markdown, no
 preamble, no backslash-escaped quotes. Keys: exhibit_title, narrative,
-artifact, style (mood, palette as three #hex strings, shape). style.shape
-must be exactly one of these eight words — no phrases, no poetry:
-spiral, fracture, shards, waves, dots, blob, planes, concentric. Pick the
-one that fits the unlived life; vary it across exhibits."""
+artifact, style (mood, palette as three #hex strings, shape).
+
+style.shape MUST be exactly one of these eight words — no phrases, no
+poetry: spiral, fracture, shards, waves, dots, blob, planes, concentric.
+
+Choose the shape by reading the EMOTIONAL GEOMETRY of the unlived life.
+Do not default to the same shape. Match the deepest movement of the story:
+- spiral — return, longing, going inward, a pull back to the same point.
+- fracture — a clean break, rupture, the moment a path split in two.
+- shards — shattered plans, regret, many sharp pieces of one choice.
+- waves — time, memory, grief that returns, something rising and falling.
+- dots — scattered possibilities, chance, a life of many small maybes.
+- blob — formless desire, becoming, something soft and not yet shaped.
+- planes — structure, career, duty, order, the architecture of a safe life.
+- concentric — the void, stillness, a self circling its own center.
+
+Read the feeling first, then pick the single shape whose geometry IS that
+feeling. Most stories are NOT planes or concentric — reach for the shape
+that truly matches."""
 
 # Extra instructions if the voice drifts — leave blank unless you're tuning
 VOICE = """Write in a voice of quiet psychological insight — flowing, reflective sentences that turn, midway, into something seen clearly. The register is calm and lucid, observing a soul from a gentle distance. You do not describe scenes or paint pictures; you interpret what lives beneath the choice — the desire, the fear, the motion someone mistook for wanting. Let long sentences breathe, then break into a short, plain one that lands like a quiet truth. Your language is clean and elevated, never decorative, never cliché. Avoid words like "whispers," "echo," "tapestry," "testament," "yearning." You see them softly, and then you tell them simply.
