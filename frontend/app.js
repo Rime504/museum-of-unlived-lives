@@ -17,8 +17,12 @@ const countEl = $("#count");
 const STORE_KEY = "museum.rooms.v2";
 const MAX_ROOMS = 12;
 
+const DOWNLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>`;
+
 /** Rooms opened this page session — first load shows curator warmup copy. */
 let roomsOpenedThisSession = 0;
+/** Room currently open in the lightbox (gallery history). */
+let activeRoom = null;
 
 // ---------- small helpers ----------
 const escapeHtml = (s) =>
@@ -84,8 +88,11 @@ function pushRoom(room) {
 const lb = $("#lightbox");
 const lbBody = $("#lbBody");
 const lbImg = $("#lbImg");
+const lbActions = $("#lbActions");
+const lbDownload = $("#lbDownload");
 
 const openLightbox = (room) => {
+  activeRoom = room;
   if (room.card_html) {
     // Live HTML/SVG card — vector, stays crisp at full size.
     lbBody.hidden = false;
@@ -98,18 +105,36 @@ const openLightbox = (room) => {
     lbImg.hidden = false;
     lbImg.src = room.png;
   }
+  lbActions.hidden = false;
   lb.classList.add("open");
 };
 
 const closeLightbox = () => {
+  activeRoom = null;
   lb.classList.remove("open");
   lbBody.innerHTML = "";
   lbBody.hidden = true;
   lbImg.hidden = true;
   lbImg.removeAttribute("src");
+  lbActions.hidden = true;
 };
 
 $("#lbClose").addEventListener("click", closeLightbox);
+lbDownload?.addEventListener("click", async () => {
+  if (!activeRoom) return;
+  lbDownload.disabled = true;
+  try {
+    await exportRoomPng({
+      cardEl: lbBody.querySelector(".museum-card"),
+      title: activeRoom.title,
+      fallbackPng: activeRoom.png,
+    });
+  } catch {
+    if (activeRoom.png) triggerDownload(activeRoom.png, `${activeRoom.title || "exhibit"}.png`);
+  } finally {
+    lbDownload.disabled = false;
+  }
+});
 lb.addEventListener("click", (e) => {
   if (e.target === lb) closeLightbox();
 });
@@ -167,6 +192,15 @@ function triggerDownload(url, filename) {
   a.remove();
 }
 
+async function exportRoomPng({ cardEl, title, fallbackPng }) {
+  const fileName = `${title || "exhibit"}.png`;
+  if (cardEl) {
+    await downloadCardPng(cardEl, title || "exhibit");
+    return;
+  }
+  if (fallbackPng) triggerDownload(fallbackPng, fileName);
+}
+
 // ---------- stage renderers ----------
 function showCurating(isFirstLoad = false) {
   const subcopy = isFirstLoad
@@ -187,14 +221,13 @@ function showNotice(msg) {
 
 async function showExhibit(data) {
   const title = data.title || "exhibit";
-  const fileName = `${title}.png`;
   stage.innerHTML = `
     <div class="reveal">
       <div class="spotlight"></div>
       ${data.card_html}
       <div class="exhibit-actions">
         <button class="ghost-btn" id="download" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+          ${DOWNLOAD_ICON}
           Download card
         </button>
         <button class="ghost-btn" id="again" type="button">
@@ -218,11 +251,7 @@ async function showExhibit(data) {
   downloadBtn?.addEventListener("click", async () => {
     downloadBtn.disabled = true;
     try {
-      if (cardEl) {
-        await downloadCardPng(cardEl, title);
-      } else if (data.png) {
-        triggerDownload(data.png, fileName);
-      }
+      await exportRoomPng({ cardEl, title, fallbackPng: data.png });
     } catch {
       if (data.png) triggerDownload(data.png, fileName);
     } finally {

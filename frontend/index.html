@@ -53,8 +53,16 @@
 
   <div class="lightbox" id="lightbox">
     <span class="lb-close" id="lbClose">&times;</span>
-    <div class="lightbox-body" id="lbBody" hidden></div>
-    <img id="lbImg" alt="exhibit" hidden />
+    <div class="lightbox-inner">
+      <div class="lightbox-body" id="lbBody" hidden></div>
+      <img id="lbImg" alt="exhibit" hidden />
+      <div class="lb-actions" id="lbActions" hidden>
+        <button class="ghost-btn" id="lbDownload" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+          Download card
+        </button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/static/app.js"></script>

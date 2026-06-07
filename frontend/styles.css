@@ -268,19 +268,24 @@ body {
   background: rgba(5, 4, 8, 0.92); backdrop-filter: blur(12px);
 }
 .lightbox.open { display: grid; }
-.lightbox-body {
-  position: relative; z-index: 1; width: min(92vw, var(--maxw));
-  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+.lightbox-inner {
+  position: relative; z-index: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 22px; width: min(92vw, var(--maxw));
   animation: fadeIn 0.3s ease both;
+}
+.lightbox-body {
+  width: 100%;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
 }
 .lightbox-body .museum-card {
   box-shadow: 0 48px 120px -36px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(0, 0, 0, 0.45);
 }
 .lightbox img {
-  position: relative; z-index: 1; width: min(92vw, var(--maxw)); height: auto;
+  width: 100%; height: auto;
   border-radius: 12px; border: 1px solid var(--line);
-  box-shadow: 0 40px 100px -30px #000; animation: fadeIn 0.3s ease both;
+  box-shadow: 0 40px 100px -30px #000;
 }
+.lb-actions { display: flex; justify-content: center; }
 .lightbox .lb-close {
   position: absolute; top: 22px; right: 26px; font-size: 30px; color: var(--muted);
   cursor: pointer; line-height: 1; font-family: var(--serif);
