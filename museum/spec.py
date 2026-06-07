@@ -4,6 +4,17 @@ from __future__ import annotations
 
 DEFAULT_SHAPE_KEY = "concentric"
 
+SHAPE_KEYS: tuple[str, ...] = (
+    "spiral",
+    "fracture",
+    "shards",
+    "waves",
+    "dots",
+    "blob",
+    "planes",
+    "concentric",
+)
+
 SHAPE_KEYWORDS: dict[str, str] = {
     "fracture": "fracture",
     "crack": "fracture",
@@ -47,7 +58,7 @@ EXHIBIT_JSON_SCHEMA: dict = {
                     "minItems": 3,
                     "maxItems": 3,
                 },
-                "shape": {"type": "string"},
+                "shape": {"type": "string", "enum": list(SHAPE_KEYS)},
             },
             "required": ["mood", "palette", "shape"],
         },
@@ -57,8 +68,10 @@ EXHIBIT_JSON_SCHEMA: dict = {
 
 
 def resolve_shape_key(shape_text: str) -> str:
-    lower = (shape_text or "").lower()
+    key = (shape_text or "").strip().lower()
+    if key in SHAPE_KEYS:
+        return key
     for word, renderer in SHAPE_KEYWORDS.items():
-        if word in lower:
+        if word in key:
             return renderer
     return DEFAULT_SHAPE_KEY

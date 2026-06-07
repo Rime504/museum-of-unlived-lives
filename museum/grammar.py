@@ -2,37 +2,15 @@
 
 from __future__ import annotations
 
-import json
 from functools import lru_cache
-from typing import Any
 
-EXHIBIT_JSON_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "exhibit_title": {"type": "string"},
-        "narrative": {"type": "string"},
-        "artifact": {"type": "string"},
-        "style": {
-            "type": "object",
-            "properties": {
-                "mood": {"type": "string"},
-                "palette": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                },
-                "shape": {"type": "string"},
-            },
-            "required": ["mood", "palette", "shape"],
-            "additionalProperties": False,
-        },
-    },
-    "required": ["exhibit_title", "narrative", "artifact", "style"],
-    "additionalProperties": False,
-}
+from museum.spec import EXHIBIT_JSON_SCHEMA
 
 
 @lru_cache(maxsize=1)
 def get_exhibit_grammar():
+    import json
+
     from llama_cpp import LlamaGrammar
 
     return LlamaGrammar.from_json_schema(

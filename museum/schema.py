@@ -10,12 +10,18 @@ from pydantic import BaseModel, Field, field_validator
 
 from museum.model import ask_curator
 from museum.prompts import format_counterfactual
+from museum.spec import SHAPE_KEYS, resolve_shape_key
 
 
 class ExhibitStyle(BaseModel):
     mood: str
     palette: list[str] = Field(min_length=3, max_length=3)
     shape: str
+
+    @field_validator("shape")
+    @classmethod
+    def canonical_shape(cls, v: str) -> str:
+        return resolve_shape_key(v)
 
     @field_validator("palette")
     @classmethod
@@ -108,7 +114,8 @@ def create_exhibit(user_line: str) -> Exhibit:
     except Exception as first_err:
         fix_prompt = (
             "Return corrected JSON only. Same keys: exhibit_title, narrative, "
-            f"artifact, style (mood, palette, shape). No markdown.\n{raw[:2000]}"
+            f"artifact, style (mood, palette, shape — exactly one of: "
+            f"{', '.join(SHAPE_KEYS)}). No markdown.\n{raw[:2000]}"
         )
         try:
             repaired = ask_curator(counterfactual, repair=fix_prompt)
