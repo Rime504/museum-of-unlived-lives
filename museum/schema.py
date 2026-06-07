@@ -10,17 +10,19 @@ from pydantic import BaseModel, Field, field_validator
 
 from museum.model import ask_curator
 from museum.prompts import format_counterfactual
-from museum.spec import SHAPE_KEYS, resolve_shape_key
+from museum.spec import assign_shape_key, resolve_shape_key
 
 
 class ExhibitStyle(BaseModel):
     mood: str
     palette: list[str] = Field(min_length=3, max_length=3)
-    shape: str
+    shape: str = ""
 
     @field_validator("shape")
     @classmethod
     def canonical_shape(cls, v: str) -> str:
+        if not (v or "").strip():
+            return ""
         return resolve_shape_key(v)
 
     @field_validator("palette")
@@ -106,20 +108,27 @@ def _parse_exhibit(raw: str) -> Exhibit:
     return Exhibit.model_validate(_extract_json_object(raw))
 
 
+def _with_shape(exhibit: Exhibit, shape: str) -> Exhibit:
+    return exhibit.model_copy(
+        update={"style": exhibit.style.model_copy(update={"shape": shape})}
+    )
+
+
 def create_exhibit(user_line: str) -> Exhibit:
     counterfactual = format_counterfactual(user_line)
-    raw = ask_curator(counterfactual)
+    shape = assign_shape_key(counterfactual)
+    raw = ask_curator(counterfactual, shape=shape)
     try:
-        return _parse_exhibit(raw)
+        return _with_shape(_parse_exhibit(raw), shape)
     except Exception as first_err:
         fix_prompt = (
             "Return corrected JSON only. Same keys: exhibit_title, narrative, "
-            f"artifact, style (mood, palette, shape — exactly one of: "
-            f"{', '.join(SHAPE_KEYS)}). No markdown.\n{raw[:2000]}"
+            "artifact, style (mood, palette only — no shape). No markdown.\n"
+            f"{raw[:2000]}"
         )
         try:
-            repaired = ask_curator(counterfactual, repair=fix_prompt)
-            return _parse_exhibit(repaired)
+            repaired = ask_curator(counterfactual, shape=shape, repair=fix_prompt)
+            return _with_shape(_parse_exhibit(repaired), shape)
         except Exception as second_err:
             preview = (raw or "").strip()[:240].replace("\n", " ")
             raise RuntimeError(

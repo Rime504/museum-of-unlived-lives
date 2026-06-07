@@ -169,10 +169,13 @@ def _raw_complete(
 def ask_curator(
     counterfactual: str,
     *,
+    shape: str = "",
     repair: str | None = None,
-    max_tokens: int = 800,
+    max_tokens: int = 960,
 ) -> str:
-    return _ask_curator_impl(counterfactual, repair=repair, max_tokens=max_tokens)
+    return _ask_curator_impl(
+        counterfactual, shape=shape, repair=repair, max_tokens=max_tokens
+    )
 
 
 def wait_for_weights(timeout: float = 7200) -> None:
@@ -191,8 +194,9 @@ def wait_for_weights(timeout: float = 7200) -> None:
 def _ask_curator_impl(
     counterfactual: str,
     *,
+    shape: str = "",
     repair: str | None = None,
-    max_tokens: int = 800,
+    max_tokens: int = 960,
 ) -> str:
     wait_for_weights()
     is_repair = repair is not None
@@ -202,7 +206,7 @@ def _ask_curator_impl(
             {"role": "user", "content": f"{repair} /no_think"},
         ]
     else:
-        messages = build_messages(counterfactual)
+        messages = build_messages(counterfactual, shape=shape)
 
     llm = _init_minicpm()
     temperature = 0.4
@@ -270,5 +274,9 @@ def kick_warmup() -> None:
 if __name__ == "__main__":
     import sys
 
+    from museum.prompts import format_counterfactual
+    from museum.spec import assign_shape_key
+
     line = sys.argv[1] if len(sys.argv) > 1 else "What if I had said yes"
-    print(ask_curator(line))
+    counterfactual = format_counterfactual(line)
+    print(ask_curator(counterfactual, shape=assign_shape_key(counterfactual)))
