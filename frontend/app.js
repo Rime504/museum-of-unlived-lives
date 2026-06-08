@@ -31,6 +31,8 @@ const DOWNLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
 let roomsOpenedThisSession = 0;
 /** Room currently open in the lightbox (gallery history). */
 let activeRoom = null;
+/** Index in loadRooms() while lightbox is open. */
+let lightboxIndex = 0;
 /** Carousel position — explicit so last slide (12) is always reachable. */
 let carouselIndex = 0;
 
@@ -199,7 +201,7 @@ function renderGallery({ scrollToStart = false } = {}) {
     fig.innerHTML = `
       <img src="${room.png}" alt="${escapeAttr(room.title)}" loading="lazy" draggable="false" />
       <figcaption>${escapeHtml(room.title)}</figcaption>`;
-    fig.addEventListener("click", () => openLightbox(room));
+    fig.addEventListener("click", () => openLightbox(i));
     carouselTrack.appendChild(fig);
 
     const dot = document.createElement("button");
@@ -238,11 +240,12 @@ const lbBody = $("#lbBody");
 const lbImg = $("#lbImg");
 const lbActions = $("#lbActions");
 const lbDownload = $("#lbDownload");
+const lbPrev = $("#lbPrev");
+const lbNext = $("#lbNext");
+const lbCounter = $("#lbCounter");
 
-const openLightbox = (room) => {
-  activeRoom = room;
+function renderLightboxRoom(room) {
   if (room.card_html) {
-    // Live HTML/SVG card — vector, stays crisp at full size.
     lbBody.hidden = false;
     lbBody.innerHTML = room.card_html;
     lbImg.hidden = true;
@@ -253,8 +256,50 @@ const openLightbox = (room) => {
     lbImg.hidden = false;
     lbImg.src = room.png;
   }
+}
+
+function updateLightboxNav() {
+  const rooms = loadRooms();
+  const total = rooms.length;
+  const multi = total > 1;
+  lbPrev.hidden = !multi;
+  lbNext.hidden = !multi;
+  lbPrev.disabled = lightboxIndex <= 0;
+  lbNext.disabled = lightboxIndex >= total - 1;
+  lbCounter.textContent = multi ? `${lightboxIndex + 1} / ${total}` : "";
+}
+
+function showLightboxRoom(index, { direction = 0 } = {}) {
+  const rooms = loadRooms();
+  if (!rooms.length) return;
+  lightboxIndex = Math.max(0, Math.min(rooms.length - 1, index));
+  activeRoom = rooms[lightboxIndex];
+  carouselIndex = lightboxIndex;
+
+  if (direction !== 0 && lbBody) {
+    lbBody.classList.remove("lb-from-left", "lb-from-right");
+    lbBody.classList.add(direction > 0 ? "lb-from-right" : "lb-from-left");
+  }
+
+  renderLightboxRoom(activeRoom);
+  updateLightboxNav();
+  scrollToSlide(lightboxIndex, true);
+}
+
+const openLightbox = (index) => {
+  const rooms = loadRooms();
+  if (!rooms.length) return;
+  showLightboxRoom(typeof index === "number" ? index : 0, { direction: 0 });
   lbActions.hidden = false;
   lb.classList.add("open");
+};
+
+const navigateLightbox = (delta) => {
+  if (!lb.classList.contains("open")) return;
+  const rooms = loadRooms();
+  const next = lightboxIndex + delta;
+  if (next < 0 || next >= rooms.length) return;
+  showLightboxRoom(next, { direction: delta });
 };
 
 const closeLightbox = () => {
@@ -262,12 +307,22 @@ const closeLightbox = () => {
   lb.classList.remove("open");
   lbBody.innerHTML = "";
   lbBody.hidden = true;
+  lbBody.classList.remove("lb-from-left", "lb-from-right");
   lbImg.hidden = true;
   lbImg.removeAttribute("src");
   lbActions.hidden = true;
+  scrollToSlide(lightboxIndex, true);
 };
 
 $("#lbClose").addEventListener("click", closeLightbox);
+lbPrev?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  navigateLightbox(-1);
+});
+lbNext?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  navigateLightbox(1);
+});
 lbDownload?.addEventListener("click", async () => {
   if (!activeRoom) return;
   lbDownload.disabled = true;
@@ -286,8 +341,35 @@ lbDownload?.addEventListener("click", async () => {
 lb.addEventListener("click", (e) => {
   if (e.target === lb) closeLightbox();
 });
+
+let lbTouchX = 0;
+lb?.addEventListener(
+  "touchstart",
+  (e) => {
+    lbTouchX = e.changedTouches[0].screenX;
+  },
+  { passive: true }
+);
+lb?.addEventListener(
+  "touchend",
+  (e) => {
+    if (!lb.classList.contains("open")) return;
+    const dx = e.changedTouches[0].screenX - lbTouchX;
+    if (Math.abs(dx) > 48) navigateLightbox(dx < 0 ? 1 : -1);
+  },
+  { passive: true }
+);
+
 document.addEventListener("keydown", (e) => {
+  if (!lb.classList.contains("open")) return;
   if (e.key === "Escape") closeLightbox();
+  else if (e.key === "ArrowLeft") {
+    e.preventDefault();
+    navigateLightbox(-1);
+  } else if (e.key === "ArrowRight") {
+    e.preventDefault();
+    navigateLightbox(1);
+  }
 });
 
 // ---------- gradio server connection ----------

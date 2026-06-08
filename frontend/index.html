@@ -87,10 +87,17 @@
 
   <div class="lightbox" id="lightbox">
     <span class="lb-close" id="lbClose">&times;</span>
+    <button class="lb-nav lb-prev" id="lbPrev" type="button" aria-label="Previous room" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+    <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="Next room" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
     <div class="lightbox-inner">
       <div class="lightbox-body" id="lbBody" hidden></div>
       <img id="lbImg" alt="exhibit" hidden />
       <div class="lb-actions" id="lbActions" hidden>
+        <span class="lb-counter" id="lbCounter" aria-live="polite"></span>
         <button class="ghost-btn" id="lbDownload" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
           Download card
