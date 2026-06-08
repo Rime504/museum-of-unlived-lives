@@ -83,15 +83,6 @@ const ARC = {
   fadeStep: 0.14,
 };
 
-const LB_ARC = {
-  radius: 780,
-  angleStep: 0.2,
-  lift: 44,
-  depth: 64,
-  rot: 22,
-  scaleStep: 0.12,
-  fadeStep: 0.16,
-};
 
 function applyArcToSlides(slides, activeIndex, cfg) {
   const reduced =
@@ -178,6 +169,12 @@ function initCarousel() {
   );
 
   new ResizeObserver(() => scrollToSlide(carouselIndex)).observe(carouselViewport);
+
+  if (lbArcViewport) {
+    new ResizeObserver(() => {
+      if (lb.classList.contains("open")) applyLbArcLayout();
+    }).observe(lbArcViewport);
+  }
 }
 
 function renderGallery({ scrollToStart = false } = {}) {
@@ -239,6 +236,7 @@ function pushRoom(room) {
 // ---------- lightbox (curved arc zoom) ----------
 const lb = $("#lightbox");
 const lbArcTrack = $("#lbArcTrack");
+const lbArcViewport = $("#lbArcViewport");
 const lbActions = $("#lbActions");
 const lbDownload = $("#lbDownload");
 const lbPrev = $("#lbPrev");
@@ -251,8 +249,44 @@ function getLbArcSlides() {
   return [...lbArcTrack.querySelectorAll(".lb-arc-slide")];
 }
 
+/** Zoom view: only prev · center · next — no stack overlap. */
 function applyLbArcLayout() {
-  applyArcToSlides(getLbArcSlides(), lightboxIndex, LB_ARC);
+  const slides = getLbArcSlides();
+  const reduced =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  const vw = lbArcViewport?.clientWidth || window.innerWidth;
+  const spread = Math.min(vw * 0.46, 460);
+
+  slides.forEach((slide, i) => {
+    const d = i - lightboxIndex;
+
+    if (Math.abs(d) > 1) {
+      slide.style.visibility = "hidden";
+      slide.style.opacity = "0";
+      slide.style.pointerEvents = "none";
+      slide.classList.remove("is-active", "is-side");
+      return;
+    }
+
+    slide.style.visibility = "visible";
+    slide.classList.toggle("is-active", d === 0);
+    slide.classList.toggle("is-side", d !== 0);
+
+    const x = d * spread;
+    const y = Math.abs(d) * 16;
+    const rot = d * -24;
+    const sc = d === 0 ? 1 : 0.54;
+    const op = d === 0 ? 1 : 0.55;
+    const z = d === 0 ? 20 : -40;
+
+    slide.style.transform =
+      `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z}px) ` +
+      `rotateY(${rot.toFixed(1)}deg) scale(${sc.toFixed(3)})`;
+    slide.style.opacity = op.toFixed(3);
+    slide.style.zIndex = d === 0 ? "30" : String(10 - Math.abs(d));
+    slide.style.pointerEvents = "auto";
+    slide.style.transition = reduced ? "none" : "";
+  });
 }
 
 function arcRoomsKey(rooms) {
