@@ -249,17 +249,36 @@ function getLbArcSlides() {
   return [...lbArcTrack.querySelectorAll(".lb-arc-slide")];
 }
 
+function measureLbFitScale() {
+  const slide = lbArcTrack?.querySelector(".lb-arc-slide.is-active");
+  const card = slide?.querySelector(".museum-card, .lb-arc-fallback");
+  if (!card) return 1;
+  const maxH = window.innerHeight * 0.68 - 150;
+  const naturalH = card.offsetHeight;
+  if (!naturalH || naturalH <= maxH) return 1;
+  return maxH / naturalH;
+}
+
+function sizeLightboxViewport(fitScale) {
+  if (!lbArcViewport) return;
+  const slide = lbArcTrack?.querySelector(".lb-arc-slide.is-active");
+  const card = slide?.querySelector(".museum-card, .lb-arc-fallback");
+  if (!card) return;
+  const h = Math.ceil(card.offsetHeight * fitScale + 28);
+  lbArcViewport.style.height = `${h}px`;
+}
+
 /** Zoom view: only prev · center · next — no stack overlap. */
 function applyLbArcLayout() {
   const slides = getLbArcSlides();
   const reduced =
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   const vw = lbArcViewport?.clientWidth || window.innerWidth;
-  const spread = Math.min(vw * 0.46, 460);
+  const spread = Math.min(vw * 0.44, 440);
 
+  // Pass 1 — lay out at scale 1 so we can measure true card height.
   slides.forEach((slide, i) => {
     const d = i - lightboxIndex;
-
     if (Math.abs(d) > 1) {
       slide.style.visibility = "hidden";
       slide.style.opacity = "0";
@@ -267,15 +286,28 @@ function applyLbArcLayout() {
       slide.classList.remove("is-active", "is-side");
       return;
     }
-
     slide.style.visibility = "visible";
     slide.classList.toggle("is-active", d === 0);
     slide.classList.toggle("is-side", d !== 0);
+    const x = d * spread;
+    slide.style.transform =
+      `translate(-50%, -50%) translate3d(${x}px, 0, 0) rotateY(${d * -24}deg) scale(${d === 0 ? 1 : 0.54})`;
+    slide.style.opacity = d === 0 ? "1" : "0.55";
+    slide.style.transition = "none";
+  });
+
+  const fitScale = measureLbFitScale();
+  sizeLightboxViewport(fitScale);
+
+  // Pass 2 — apply fit + motion.
+  slides.forEach((slide, i) => {
+    const d = i - lightboxIndex;
+    if (Math.abs(d) > 1) return;
 
     const x = d * spread;
-    const y = Math.abs(d) * 16;
+    const y = Math.abs(d) * 12;
     const rot = d * -24;
-    const sc = d === 0 ? 1 : 0.54;
+    const sc = d === 0 ? fitScale : 0.52;
     const op = d === 0 ? 1 : 0.55;
     const z = d === 0 ? 20 : -40;
 
