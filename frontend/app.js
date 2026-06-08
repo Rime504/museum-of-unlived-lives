@@ -253,10 +253,10 @@ function measureLbFitScale() {
   const slide = lbArcTrack?.querySelector(".lb-arc-slide.is-active");
   const card = slide?.querySelector(".museum-card, .lb-arc-fallback");
   if (!card) return 1;
-  const maxH = window.innerHeight * 0.68 - 150;
+  const maxH = window.innerHeight * 0.84 - 100;
   const naturalH = card.offsetHeight;
   if (!naturalH || naturalH <= maxH) return 1;
-  return maxH / naturalH;
+  return Math.max(0.9, maxH / naturalH);
 }
 
 function sizeLightboxViewport(fitScale) {
@@ -274,7 +274,7 @@ function applyLbArcLayout() {
   const reduced =
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   const vw = lbArcViewport?.clientWidth || window.innerWidth;
-  const spread = Math.min(vw * 0.44, 440);
+  const spread = Math.min(vw * 0.42, 420);
 
   // Pass 1 — lay out at scale 1 so we can measure true card height.
   slides.forEach((slide, i) => {
