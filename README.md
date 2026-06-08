@@ -8,6 +8,8 @@ sdk_version: "6.16.0"
 python_version: "3.11"
 app_file: app.py
 pinned: true
+fullWidth: true
+header: mini
 license: mit
 ---
 
