@@ -10,11 +10,20 @@
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-  <div class="hall-bg"></div>
-  <div class="spot a"></div>
-  <div class="spot b"></div>
-  <div class="grain"></div>
-  <div class="vignette"></div>
+  <div class="atmosphere" aria-hidden="true">
+    <div class="hall-bg"></div>
+    <div class="aurora"></div>
+    <div class="beams">
+      <span class="beam beam-1"></span>
+      <span class="beam beam-2"></span>
+      <span class="beam beam-3"></span>
+    </div>
+    <div class="spot a"></div>
+    <div class="spot b"></div>
+    <canvas class="dust" id="dust"></canvas>
+    <div class="grain"></div>
+    <div class="vignette"></div>
+  </div>
 
   <main class="hall">
     <header class="hero">

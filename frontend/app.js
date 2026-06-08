@@ -461,6 +461,142 @@ lineEl.addEventListener("keydown", (e) => {
   }
 });
 
+// ---------- living atmosphere: drifting dust motes + parallax ----------
+const prefersReducedMotion =
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
+function initDust() {
+  const canvas = document.getElementById("dust");
+  if (!canvas || prefersReducedMotion) return;
+  const ctx = canvas.getContext("2d", { alpha: true });
+  if (!ctx) return;
+
+  const TINTS = [
+    [201, 168, 106], // brass
+    [167, 139, 250], // violet
+    [233, 228, 240], // pale light
+  ];
+  let dpr = 1;
+  let w = 0;
+  let h = 0;
+  let motes = [];
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  function spawn() {
+    const count = Math.round(Math.min(64, Math.max(28, (w * h) / 26000)));
+    motes = new Array(count).fill(0).map(() => {
+      const tint = TINTS[(Math.random() * TINTS.length) | 0];
+      return {
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: rand(0.5, 2.1),
+        vy: rand(-5, -14) / 1000, // drift upward, px per ms
+        vx: rand(-4, 4) / 1000,
+        sway: rand(0.0006, 0.0016),
+        phase: Math.random() * Math.PI * 2,
+        base: rand(0.12, 0.55),
+        tw: rand(0.0008, 0.0022), // twinkle speed
+        tint,
+      };
+    });
+  }
+
+  function resize() {
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    w = canvas.clientWidth;
+    h = canvas.clientHeight;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    spawn();
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(48, now - last);
+    last = now;
+    ctx.clearRect(0, 0, w, h);
+
+    for (const m of motes) {
+      m.y += m.vy * dt;
+      m.x += (m.vx + Math.sin(now * m.sway + m.phase) * 0.012) * dt;
+
+      if (m.y < -6) {
+        m.y = h + 6;
+        m.x = Math.random() * w;
+      }
+      if (m.x < -6) m.x = w + 6;
+      else if (m.x > w + 6) m.x = -6;
+
+      const alpha = m.base * (0.55 + 0.45 * Math.sin(now * m.tw + m.phase));
+      const [r, g, b] = m.tint;
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
+      ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${(alpha * 0.6).toFixed(3)})`;
+      ctx.shadowBlur = m.r * 3.4;
+      ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    rafId = requestAnimationFrame(frame);
+  }
+
+  let rafId = 0;
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resize, 160);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      cancelAnimationFrame(rafId);
+    } else {
+      last = performance.now();
+      rafId = requestAnimationFrame(frame);
+    }
+  });
+
+  resize();
+  rafId = requestAnimationFrame(frame);
+}
+
+function initParallax() {
+  if (prefersReducedMotion || window.matchMedia?.("(pointer: coarse)").matches) return;
+  const root = document.documentElement;
+  let tx = 0;
+  let ty = 0;
+  let cx = 0;
+  let cy = 0;
+  let ticking = false;
+
+  function loop() {
+    cx += (tx - cx) * 0.06;
+    cy += (ty - cy) * 0.06;
+    root.style.setProperty("--px", cx.toFixed(3));
+    root.style.setProperty("--py", cy.toFixed(3));
+    if (Math.abs(tx - cx) > 0.001 || Math.abs(ty - cy) > 0.001) {
+      requestAnimationFrame(loop);
+    } else {
+      ticking = false;
+    }
+  }
+
+  window.addEventListener(
+    "pointermove",
+    (e) => {
+      tx = (e.clientX / window.innerWidth - 0.5) * 2;
+      ty = (e.clientY / window.innerHeight - 0.5) * 2;
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(loop);
+      }
+    },
+    { passive: true }
+  );
+}
+
+initDust();
+initParallax();
 initCarousel();
 renderGallery();
 autoGrow();
