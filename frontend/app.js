@@ -259,6 +259,12 @@ function measureLbFitScale() {
   return Math.max(0.9, maxH / naturalH);
 }
 
+/** Snap scale so center card text stays on crisp pixel boundaries. */
+function snapLbCenterScale(fitScale) {
+  if (fitScale >= 0.98) return 1;
+  return Math.max(0.9, Math.round(fitScale * 20) / 20);
+}
+
 function sizeLightboxViewport(fitScale) {
   if (!lbArcViewport) return;
   const slide = lbArcTrack?.querySelector(".lb-arc-slide.is-active");
@@ -290,13 +296,17 @@ function applyLbArcLayout() {
     slide.classList.toggle("is-active", d === 0);
     slide.classList.toggle("is-side", d !== 0);
     const x = d * spread;
-    slide.style.transform =
-      `translate(-50%, -50%) translate3d(${x}px, 0, 0) rotateY(${d * -24}deg) scale(${d === 0 ? 1 : 0.54})`;
+    if (d === 0) {
+      slide.style.transform = "translate(-50%, -50%)";
+    } else {
+      slide.style.transform =
+        `translate(-50%, -50%) translate3d(${x}px, 0, -40px) rotateY(${d * -24}deg) scale(0.54)`;
+    }
     slide.style.opacity = d === 0 ? "1" : "0.55";
     slide.style.transition = "none";
   });
 
-  const fitScale = measureLbFitScale();
+  const fitScale = snapLbCenterScale(measureLbFitScale());
   sizeLightboxViewport(fitScale);
 
   // Pass 2 — apply fit + motion.
@@ -309,11 +319,17 @@ function applyLbArcLayout() {
     const rot = d * -24;
     const sc = d === 0 ? fitScale : 0.52;
     const op = d === 0 ? 1 : 0.55;
-    const z = d === 0 ? 20 : -40;
 
-    slide.style.transform =
-      `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z}px) ` +
-      `rotateY(${rot.toFixed(1)}deg) scale(${sc.toFixed(3)})`;
+    if (d === 0) {
+      slide.style.transform =
+        fitScale === 1
+          ? "translate(-50%, -50%)"
+          : `translate(-50%, -50%) scale(${sc.toFixed(2)})`;
+    } else {
+      slide.style.transform =
+        `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, -40px) ` +
+        `rotateY(${rot.toFixed(1)}deg) scale(${sc.toFixed(2)})`;
+    }
     slide.style.opacity = op.toFixed(3);
     slide.style.zIndex = d === 0 ? "30" : String(10 - Math.abs(d));
     slide.style.pointerEvents = "auto";
@@ -386,6 +402,7 @@ const openLightbox = (index) => {
   showLightboxRoom(typeof index === "number" ? index : 0);
   lbActions.hidden = false;
   lb.classList.add("open");
+  document.body.classList.add("lb-open");
 };
 
 const navigateLightbox = (delta) => {
@@ -399,6 +416,7 @@ const navigateLightbox = (delta) => {
 const closeLightbox = () => {
   activeRoom = null;
   lb.classList.remove("open");
+  document.body.classList.remove("lb-open");
   lbActions.hidden = true;
   scrollToSlide(lightboxIndex);
 };

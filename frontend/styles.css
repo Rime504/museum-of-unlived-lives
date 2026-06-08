@@ -519,7 +519,7 @@ body {
 }
 .lightbox::before {
   content: ""; position: fixed; inset: 0; z-index: -1;
-  background: rgba(5, 4, 8, 0.92); backdrop-filter: blur(12px);
+  background: #07060a;
 }
 .lightbox.open { display: grid; }
 .lightbox-inner {
@@ -545,16 +545,24 @@ body {
   position: absolute; left: 50%; top: 50%;
   width: min(94vw, 860px);
   transform-origin: center center;
-  backface-visibility: hidden;
-  will-change: transform, opacity;
   transition:
     transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.5s ease;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
-.lb-arc-slide.is-active { cursor: default; z-index: 30 !important; }
-.lb-arc-slide.is-side { cursor: pointer; filter: brightness(0.72); }
+.lb-arc-slide.is-active {
+  cursor: default; z-index: 30 !important;
+  transform-style: flat;
+  filter: none;
+  -webkit-font-smoothing: subpixel-antialiased;
+  -moz-osx-font-smoothing: auto;
+  text-rendering: geometricPrecision;
+}
+.lb-arc-slide.is-side {
+  cursor: pointer;
+  filter: brightness(0.72);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
 .lb-arc-slide .museum-card {
   box-shadow: 0 48px 120px -36px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(0, 0, 0, 0.45);
   pointer-events: none;
@@ -564,29 +572,46 @@ body {
 }
 .lb-arc-slide.is-active .museum-card {
   padding: 38px 38px 34px;
-  border-color: rgba(201, 168, 106, 0.45);
-  box-shadow: 0 52px 130px -32px rgba(0, 0, 0, 0.96),
-    0 0 48px -10px rgba(139, 92, 246, 0.2),
-    0 0 0 1px rgba(201, 168, 106, 0.14);
+  border-color: rgba(201, 168, 106, 0.5);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 28%),
+    linear-gradient(180deg, #1c1924, #14111a);
+  box-shadow: 0 40px 100px -36px rgba(0, 0, 0, 0.92),
+    0 0 0 1px rgba(201, 168, 106, 0.16);
+  isolation: isolate;
 }
 .lb-arc-slide.is-active .museum-card__shape {
   width: 176px; height: 176px;
 }
 .lb-arc-slide.is-active .museum-card__title {
   font-size: clamp(32px, 5.2vw, 46px);
+  font-weight: 600;
   margin-bottom: 18px;
+  color: #faf7fd;
+  letter-spacing: 0.01em;
 }
 .lb-arc-slide.is-active .museum-card__narrative {
   font-size: clamp(18px, 2.6vw, 22px);
-  line-height: 1.68;
+  font-weight: 500;
+  line-height: 1.65;
   max-width: 56ch;
+  color: #ebe4f2;
 }
 .lb-arc-slide.is-active .museum-card__mood {
   font-size: 12px; margin-bottom: 12px;
+  color: #d4b87a;
+  letter-spacing: 0.38em;
+}
+.lb-arc-slide.is-active .museum-card__placard-label {
+  color: #a89db8;
 }
 .lb-arc-slide.is-active .museum-card__artifact {
   font-size: 18px;
+  font-weight: 500;
+  color: #ddd4e8;
 }
+body.lb-open .grain { opacity: 0; }
+body.lb-open .whisper { opacity: 0 !important; }
 .lb-arc-slide.is-side:hover { filter: brightness(0.88); }
 .lb-arc-fallback {
   display: block; width: 100%; height: auto;
