@@ -11,8 +11,16 @@ const $ = (sel) => document.querySelector(sel);
 const lineEl = $("#line");
 const openBtn = $("#open");
 const stage = $("#stage");
-const grid = $("#grid");
 const countEl = $("#count");
+const galleryEmpty = $("#galleryEmpty");
+const galleryCarousel = $("#galleryCarousel");
+const galleryHint = $("#galleryHint");
+const carouselTrack = $("#carouselTrack");
+const carouselViewport = $("#carouselViewport");
+const carouselPrev = $("#carouselPrev");
+const carouselNext = $("#carouselNext");
+const carouselDots = $("#carouselDots");
+const carouselCounter = $("#carouselCounter");
 
 const STORE_KEY = "museum.rooms.v2";
 const MAX_ROOMS = 12;
@@ -56,32 +64,126 @@ function saveRooms(rooms) {
   }
 }
 
-function renderGallery() {
+function getCarouselSlides() {
+  return [...carouselTrack.querySelectorAll(".carousel-slide")];
+}
+
+function getActiveSlideIndex() {
+  const slides = getCarouselSlides();
+  if (!slides.length) return 0;
+  const center = carouselViewport.scrollLeft + carouselViewport.clientWidth / 2;
+  let best = 0;
+  let bestDist = Infinity;
+  slides.forEach((slide, i) => {
+    const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
+    const dist = Math.abs(slideCenter - center);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = i;
+    }
+  });
+  return best;
+}
+
+function scrollToSlide(index, smooth = true) {
+  const slides = getCarouselSlides();
+  const slide = slides[index];
+  if (!slide) return;
+  const left = slide.offsetLeft - (carouselViewport.clientWidth - slide.offsetWidth) / 2;
+  carouselViewport.scrollTo({ left: Math.max(0, left), behavior: smooth ? "smooth" : "instant" });
+}
+
+function updateCarouselUi() {
+  const slides = getCarouselSlides();
+  const total = slides.length;
+  if (!total) return;
+
+  const active = getActiveSlideIndex();
+  slides.forEach((slide, i) => slide.classList.toggle("is-active", i === active));
+
+  carouselDots.querySelectorAll(".carousel-dot").forEach((dot, i) => {
+    dot.classList.toggle("is-active", i === active);
+    dot.setAttribute("aria-selected", i === active ? "true" : "false");
+  });
+
+  carouselCounter.textContent = `${active + 1} / ${total}`;
+  carouselPrev.disabled = active <= 0;
+  carouselNext.disabled = active >= total - 1;
+}
+
+let carouselScrollTimer = null;
+function onCarouselScroll() {
+  clearTimeout(carouselScrollTimer);
+  carouselScrollTimer = setTimeout(updateCarouselUi, 60);
+}
+
+function initCarousel() {
+  carouselPrev?.addEventListener("click", () => scrollToSlide(getActiveSlideIndex() - 1));
+  carouselNext?.addEventListener("click", () => scrollToSlide(getActiveSlideIndex() + 1));
+  carouselViewport?.addEventListener("scroll", onCarouselScroll, { passive: true });
+
+  carouselViewport?.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      scrollToSlide(getActiveSlideIndex() - 1);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      scrollToSlide(getActiveSlideIndex() + 1);
+    }
+  });
+}
+
+function renderGallery({ scrollToStart = false } = {}) {
   const rooms = loadRooms();
   countEl.textContent = rooms.length === 1 ? "1 room" : `${rooms.length} rooms`;
 
   if (!rooms.length) {
-    grid.innerHTML = '<p class="gallery-empty">Your rooms will gather here.</p>';
+    galleryEmpty.hidden = false;
+    galleryCarousel.hidden = true;
+    galleryHint.hidden = true;
+    carouselTrack.innerHTML = "";
+    carouselDots.innerHTML = "";
     return;
   }
 
-  grid.innerHTML = "";
-  for (const room of rooms) {
+  galleryEmpty.hidden = true;
+  galleryCarousel.hidden = false;
+  galleryHint.hidden = rooms.length < 2;
+
+  carouselTrack.innerHTML = "";
+  carouselDots.innerHTML = "";
+
+  rooms.forEach((room, i) => {
     const fig = document.createElement("figure");
-    fig.className = "frame";
+    fig.className = "carousel-slide";
+    fig.style.animationDelay = `${Math.min(i * 0.05, 0.35)}s`;
     fig.innerHTML = `
-      <img src="${room.png}" alt="${escapeAttr(room.title)}" loading="lazy" />
+      <img src="${room.png}" alt="${escapeAttr(room.title)}" loading="lazy" draggable="false" />
       <figcaption>${escapeHtml(room.title)}</figcaption>`;
     fig.addEventListener("click", () => openLightbox(room));
-    grid.appendChild(fig);
-  }
+    carouselTrack.appendChild(fig);
+
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = "carousel-dot";
+    dot.setAttribute("role", "tab");
+    dot.setAttribute("aria-label", `Room ${i + 1}: ${room.title}`);
+    dot.setAttribute("aria-selected", "false");
+    dot.addEventListener("click", () => scrollToSlide(i));
+    carouselDots.appendChild(dot);
+  });
+
+  requestAnimationFrame(() => {
+    scrollToSlide(scrollToStart ? 0 : getActiveSlideIndex(), false);
+    updateCarouselUi();
+  });
 }
 
 function pushRoom(room) {
   const rooms = loadRooms();
   rooms.unshift(room);
   saveRooms(rooms);
-  renderGallery();
+  renderGallery({ scrollToStart: true });
 }
 
 // ---------- lightbox ----------
@@ -313,6 +415,7 @@ lineEl.addEventListener("keydown", (e) => {
   }
 });
 
+initCarousel();
 renderGallery();
 autoGrow();
 getClient().catch(() => {}); // warm the Gradio connection

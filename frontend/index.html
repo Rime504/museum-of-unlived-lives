@@ -35,13 +35,29 @@
 
     <section class="stage" id="stage" aria-live="polite"></section>
 
-    <section class="gallery">
+    <section class="gallery" aria-label="Your personal museum">
       <div class="gallery-head">
-        <h2>Your personal museum</h2>
+        <div class="gallery-head-text">
+          <h2>Your personal museum</h2>
+          <p class="gallery-hint" id="galleryHint" hidden>Swipe or use arrows to walk the halls</p>
+        </div>
         <span id="count">0 rooms</span>
       </div>
-      <div class="gallery-grid" id="grid">
-        <p class="gallery-empty">Your rooms will gather here.</p>
+      <p class="gallery-empty" id="galleryEmpty">Your rooms will gather here.</p>
+      <div class="gallery-carousel" id="galleryCarousel" hidden>
+        <button class="carousel-nav carousel-prev" id="carouselPrev" type="button" aria-label="Previous room">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <div class="carousel-viewport" id="carouselViewport" tabindex="0">
+          <div class="carousel-track" id="carouselTrack"></div>
+        </div>
+        <button class="carousel-nav carousel-next" id="carouselNext" type="button" aria-label="Next room">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <div class="carousel-footer">
+          <div class="carousel-dots" id="carouselDots" role="tablist" aria-label="Rooms"></div>
+          <span class="carousel-counter" id="carouselCounter" aria-live="polite"></span>
+        </div>
       </div>
     </section>
 
