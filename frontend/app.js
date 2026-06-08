@@ -72,53 +72,46 @@ function getCarouselSlides() {
   return [...carouselTrack.querySelectorAll(".carousel-slide")];
 }
 
-function syncCarouselSpacers() {
-  const slides = getCarouselSlides();
-  const spacers = carouselTrack.querySelectorAll(".carousel-spacer");
-  if (!slides.length || !spacers.length || !carouselViewport) return;
-  const pad = Math.max(0, (carouselViewport.clientWidth - slides[0].offsetWidth) / 2);
-  spacers.forEach((el) => {
-    el.style.width = `${pad}px`;
-    el.style.flexBasis = `${pad}px`;
-  });
-}
+/** Semicircle arc — cards ride the curve like frames along a gallery wall. */
+const ARC = {
+  radius: 480,
+  angleStep: 0.26,
+  lift: 52,
+  depth: 36,
+};
 
-function slideScrollLeft(slide) {
-  return slide.offsetLeft + slide.offsetWidth / 2 - carouselViewport.clientWidth / 2;
-}
-
-function getActiveSlideIndex() {
+function applyArcLayout() {
   const slides = getCarouselSlides();
-  if (!slides.length) return 0;
-  const center = carouselViewport.scrollLeft + carouselViewport.clientWidth / 2;
-  let best = 0;
-  let bestDist = Infinity;
+  const reduced =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
   slides.forEach((slide, i) => {
-    const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
-    const dist = Math.abs(slideCenter - center);
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = i;
-    }
+    const d = i - carouselIndex;
+    const theta = d * ARC.angleStep;
+    const x = Math.sin(theta) * ARC.radius;
+    const y = -(1 - Math.cos(theta)) * ARC.lift;
+    const z = -Math.abs(d) * ARC.depth;
+    const rot = d * -26;
+    const sc = 1 - Math.min(Math.abs(d) * 0.1, 0.42);
+    const op = 1 - Math.min(Math.abs(d) * 0.14, 0.62);
+
+    slide.style.transform =
+      `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z}px) ` +
+      `rotateY(${rot.toFixed(1)}deg) scale(${sc.toFixed(3)})`;
+    slide.style.opacity = op.toFixed(3);
+    slide.style.zIndex = String(100 - Math.abs(d));
+    slide.classList.toggle("is-active", d === 0);
+    if (reduced) slide.style.transition = "none";
+    else slide.style.transition = "";
   });
-  return best;
 }
 
-function scrollToSlide(index, smooth = true) {
-  const slides = getCarouselSlides();
-  const total = slides.length;
+function scrollToSlide(index) {
+  const total = getCarouselSlides().length;
   if (!total) return;
-
   carouselIndex = Math.max(0, Math.min(total - 1, index));
-  const slide = slides[carouselIndex];
-  const target = slideScrollLeft(slide);
-  const maxScroll = Math.max(0, carouselViewport.scrollWidth - carouselViewport.clientWidth);
-
-  carouselViewport.scrollTo({
-    left: Math.min(maxScroll, Math.max(0, target)),
-    behavior: smooth ? "smooth" : "instant",
-  });
-  requestAnimationFrame(updateCarouselUi);
+  applyArcLayout();
+  updateCarouselUi();
 }
 
 function updateCarouselUi() {
@@ -126,32 +119,19 @@ function updateCarouselUi() {
   const total = slides.length;
   if (!total) return;
 
-  const active = carouselIndex;
-  slides.forEach((slide, i) => slide.classList.toggle("is-active", i === active));
-
   carouselDots.querySelectorAll(".carousel-dot").forEach((dot, i) => {
-    dot.classList.toggle("is-active", i === active);
-    dot.setAttribute("aria-selected", i === active ? "true" : "false");
+    dot.classList.toggle("is-active", i === carouselIndex);
+    dot.setAttribute("aria-selected", i === carouselIndex ? "true" : "false");
   });
 
-  carouselCounter.textContent = `${active + 1} / ${total}`;
-  carouselPrev.disabled = active <= 0;
-  carouselNext.disabled = active >= total - 1;
-}
-
-let carouselScrollTimer = null;
-function onCarouselScroll() {
-  clearTimeout(carouselScrollTimer);
-  carouselScrollTimer = setTimeout(() => {
-    carouselIndex = getActiveSlideIndex();
-    updateCarouselUi();
-  }, 80);
+  carouselCounter.textContent = `${carouselIndex + 1} / ${total}`;
+  carouselPrev.disabled = carouselIndex <= 0;
+  carouselNext.disabled = carouselIndex >= total - 1;
 }
 
 function initCarousel() {
   carouselPrev?.addEventListener("click", () => scrollToSlide(carouselIndex - 1));
   carouselNext?.addEventListener("click", () => scrollToSlide(carouselIndex + 1));
-  carouselViewport?.addEventListener("scroll", onCarouselScroll, { passive: true });
 
   carouselViewport?.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft") {
@@ -163,10 +143,24 @@ function initCarousel() {
     }
   });
 
-  new ResizeObserver(() => {
-    syncCarouselSpacers();
-    scrollToSlide(carouselIndex, false);
-  }).observe(carouselViewport);
+  let arcTouchX = 0;
+  carouselViewport?.addEventListener(
+    "touchstart",
+    (e) => {
+      arcTouchX = e.changedTouches[0].screenX;
+    },
+    { passive: true }
+  );
+  carouselViewport?.addEventListener(
+    "touchend",
+    (e) => {
+      const dx = e.changedTouches[0].screenX - arcTouchX;
+      if (Math.abs(dx) > 44) scrollToSlide(carouselIndex + (dx < 0 ? 1 : -1));
+    },
+    { passive: true }
+  );
+
+  new ResizeObserver(() => scrollToSlide(carouselIndex)).observe(carouselViewport);
 }
 
 function renderGallery({ scrollToStart = false } = {}) {
@@ -189,19 +183,16 @@ function renderGallery({ scrollToStart = false } = {}) {
   carouselTrack.innerHTML = "";
   carouselDots.innerHTML = "";
 
-  const leadSpacer = document.createElement("div");
-  leadSpacer.className = "carousel-spacer";
-  leadSpacer.setAttribute("aria-hidden", "true");
-  carouselTrack.appendChild(leadSpacer);
-
   rooms.forEach((room, i) => {
     const fig = document.createElement("figure");
     fig.className = "carousel-slide";
-    fig.style.animationDelay = `${Math.min(i * 0.05, 0.35)}s`;
     fig.innerHTML = `
       <img src="${room.png}" alt="${escapeAttr(room.title)}" loading="lazy" draggable="false" />
       <figcaption>${escapeHtml(room.title)}</figcaption>`;
-    fig.addEventListener("click", () => openLightbox(i));
+    fig.addEventListener("click", () => {
+      if (i !== carouselIndex) scrollToSlide(i);
+      else openLightbox(i);
+    });
     carouselTrack.appendChild(fig);
 
     const dot = document.createElement("button");
@@ -214,16 +205,10 @@ function renderGallery({ scrollToStart = false } = {}) {
     carouselDots.appendChild(dot);
   });
 
-  const trailSpacer = document.createElement("div");
-  trailSpacer.className = "carousel-spacer";
-  trailSpacer.setAttribute("aria-hidden", "true");
-  carouselTrack.appendChild(trailSpacer);
-
   requestAnimationFrame(() => {
-    syncCarouselSpacers();
     if (scrollToStart) carouselIndex = 0;
     else carouselIndex = Math.min(carouselIndex, rooms.length - 1);
-    scrollToSlide(carouselIndex, false);
+    scrollToSlide(carouselIndex);
   });
 }
 
@@ -283,7 +268,7 @@ function showLightboxRoom(index, { direction = 0 } = {}) {
 
   renderLightboxRoom(activeRoom);
   updateLightboxNav();
-  scrollToSlide(lightboxIndex, true);
+  scrollToSlide(lightboxIndex);
 }
 
 const openLightbox = (index) => {
@@ -311,7 +296,7 @@ const closeLightbox = () => {
   lbImg.hidden = true;
   lbImg.removeAttribute("src");
   lbActions.hidden = true;
-  scrollToSlide(lightboxIndex, true);
+  scrollToSlide(lightboxIndex);
 };
 
 $("#lbClose").addEventListener("click", closeLightbox);
