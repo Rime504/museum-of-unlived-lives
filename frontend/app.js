@@ -172,7 +172,10 @@ function initCarousel() {
 
   if (lbArcViewport) {
     new ResizeObserver(() => {
-      if (lb.classList.contains("open")) applyLbArcLayout();
+      if (lb.classList.contains("open")) {
+        applyLbCenterFit();
+        applyLbArcLayout();
+      }
     }).observe(lbArcViewport);
   }
 }
@@ -237,6 +240,7 @@ function pushRoom(room) {
 const lb = $("#lightbox");
 const lbArcTrack = $("#lbArcTrack");
 const lbArcViewport = $("#lbArcViewport");
+const lbCenterStage = $("#lbCenterStage");
 const lbActions = $("#lbActions");
 const lbDownload = $("#lbDownload");
 const lbPrev = $("#lbPrev");
@@ -249,29 +253,35 @@ function getLbArcSlides() {
   return [...lbArcTrack.querySelectorAll(".lb-arc-slide")];
 }
 
-function measureLbFitScale() {
-  const slide = lbArcTrack?.querySelector(".lb-arc-slide.is-active");
-  const card = slide?.querySelector(".museum-card, .lb-arc-fallback");
-  if (!card) return 1;
-  const maxH = window.innerHeight * 0.84 - 100;
-  const naturalH = card.offsetHeight;
-  if (!naturalH || naturalH <= maxH) return 1;
-  return Math.max(0.9, maxH / naturalH);
+function lbCenterCardEl() {
+  return lbCenterStage?.querySelector(".museum-card, .lb-arc-fallback") ?? null;
 }
 
-/** Snap scale so center card text stays on crisp pixel boundaries. */
-function snapLbCenterScale(fitScale) {
-  if (fitScale >= 0.98) return 1;
-  return Math.max(0.9, Math.round(fitScale * 20) / 20);
-}
-
-function sizeLightboxViewport(fitScale) {
+function sizeLightboxViewport() {
   if (!lbArcViewport) return;
-  const slide = lbArcTrack?.querySelector(".lb-arc-slide.is-active");
-  const card = slide?.querySelector(".museum-card, .lb-arc-fallback");
+  const card = lbCenterCardEl();
   if (!card) return;
-  const h = Math.ceil(card.offsetHeight * fitScale + 28);
-  lbArcViewport.style.height = `${h}px`;
+  lbArcViewport.style.height = `${Math.ceil(card.offsetHeight + 28)}px`;
+}
+
+/** Shrink type/padding via CSS classes — never transform-scale the center card. */
+function applyLbCenterFit() {
+  if (!lbCenterStage) return;
+  lbCenterStage.classList.remove("is-compact", "is-tight");
+  const maxH = window.innerHeight * 0.84 - 100;
+  if ((lbCenterCardEl()?.offsetHeight ?? 0) > maxH) lbCenterStage.classList.add("is-compact");
+  if ((lbCenterCardEl()?.offsetHeight ?? 0) > maxH) lbCenterStage.classList.add("is-tight");
+  sizeLightboxViewport();
+}
+
+function updateCenterStage() {
+  const rooms = loadRooms();
+  const room = rooms[lightboxIndex];
+  if (!lbCenterStage || !room) return;
+  lbCenterStage.innerHTML = room.card_html
+    ? room.card_html
+    : `<img class="lb-arc-fallback" src="${escapeAttr(room.png)}" alt="${escapeAttr(room.title)}" />`;
+  requestAnimationFrame(() => applyLbCenterFit());
 }
 
 /** Zoom view: only prev · center · next — no stack overlap. */
@@ -282,59 +292,30 @@ function applyLbArcLayout() {
   const vw = lbArcViewport?.clientWidth || window.innerWidth;
   const spread = Math.min(vw * 0.42, 420);
 
-  // Pass 1 — lay out at scale 1 so we can measure true card height.
   slides.forEach((slide, i) => {
     const d = i - lightboxIndex;
-    if (Math.abs(d) > 1) {
+    if (d === 0 || Math.abs(d) > 1) {
       slide.style.visibility = "hidden";
       slide.style.opacity = "0";
       slide.style.pointerEvents = "none";
-      slide.classList.remove("is-active", "is-side");
+      slide.classList.remove("is-side");
       return;
     }
     slide.style.visibility = "visible";
-    slide.classList.toggle("is-active", d === 0);
-    slide.classList.toggle("is-side", d !== 0);
-    const x = d * spread;
-    if (d === 0) {
-      slide.style.transform = "translate(-50%, -50%)";
-    } else {
-      slide.style.transform =
-        `translate(-50%, -50%) translate3d(${x}px, 0, -40px) rotateY(${d * -24}deg) scale(0.54)`;
-    }
-    slide.style.opacity = d === 0 ? "1" : "0.55";
-    slide.style.transition = "none";
-  });
-
-  const fitScale = snapLbCenterScale(measureLbFitScale());
-  sizeLightboxViewport(fitScale);
-
-  // Pass 2 — apply fit + motion.
-  slides.forEach((slide, i) => {
-    const d = i - lightboxIndex;
-    if (Math.abs(d) > 1) return;
-
+    slide.classList.add("is-side");
     const x = d * spread;
     const y = Math.abs(d) * 12;
     const rot = d * -24;
-    const sc = d === 0 ? fitScale : 0.52;
-    const op = d === 0 ? 1 : 0.55;
-
-    if (d === 0) {
-      slide.style.transform =
-        fitScale === 1
-          ? "translate(-50%, -50%)"
-          : `translate(-50%, -50%) scale(${sc.toFixed(2)})`;
-    } else {
-      slide.style.transform =
-        `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, -40px) ` +
-        `rotateY(${rot.toFixed(1)}deg) scale(${sc.toFixed(2)})`;
-    }
-    slide.style.opacity = op.toFixed(3);
-    slide.style.zIndex = d === 0 ? "30" : String(10 - Math.abs(d));
+    slide.style.transform =
+      `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, -40px) ` +
+      `rotateY(${rot.toFixed(1)}deg) scale(0.52)`;
+    slide.style.opacity = "0.55";
+    slide.style.zIndex = String(10 - Math.abs(d));
     slide.style.pointerEvents = "auto";
     slide.style.transition = reduced ? "none" : "";
   });
+
+  sizeLightboxViewport();
 }
 
 function arcRoomsKey(rooms) {
@@ -367,11 +348,12 @@ function ensureLightboxArc() {
     lbArcKey = key;
     buildLightboxArc(rooms);
   }
+  updateCenterStage();
   applyLbArcLayout();
 }
 
 function activeLightboxCard() {
-  return lbArcTrack.querySelector(".lb-arc-slide.is-active .museum-card");
+  return lbCenterStage?.querySelector(".museum-card") ?? null;
 }
 
 function updateLightboxNav() {
