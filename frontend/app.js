@@ -31,6 +31,8 @@ const DOWNLOAD_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
 let roomsOpenedThisSession = 0;
 /** Room currently open in the lightbox (gallery history). */
 let activeRoom = null;
+/** Carousel position — explicit so last slide (12) is always reachable. */
+let carouselIndex = 0;
 
 // ---------- small helpers ----------
 const escapeHtml = (s) =>
@@ -68,6 +70,14 @@ function getCarouselSlides() {
   return [...carouselTrack.querySelectorAll(".carousel-slide")];
 }
 
+function syncCarouselPadding() {
+  const slides = getCarouselSlides();
+  if (!slides.length || !carouselViewport) return;
+  const pad = Math.max(48, (carouselViewport.clientWidth - slides[0].offsetWidth) / 2);
+  carouselTrack.style.paddingLeft = `${pad}px`;
+  carouselTrack.style.paddingRight = `${pad}px`;
+}
+
 function getActiveSlideIndex() {
   const slides = getCarouselSlides();
   if (!slides.length) return 0;
@@ -87,10 +97,20 @@ function getActiveSlideIndex() {
 
 function scrollToSlide(index, smooth = true) {
   const slides = getCarouselSlides();
-  const slide = slides[index];
-  if (!slide) return;
-  const left = slide.offsetLeft - (carouselViewport.clientWidth - slide.offsetWidth) / 2;
-  carouselViewport.scrollTo({ left: Math.max(0, left), behavior: smooth ? "smooth" : "instant" });
+  const total = slides.length;
+  if (!total) return;
+
+  carouselIndex = Math.max(0, Math.min(total - 1, index));
+  const slide = slides[carouselIndex];
+  const target =
+    slide.offsetLeft - (carouselViewport.clientWidth - slide.offsetWidth) / 2;
+  const maxScroll = Math.max(0, carouselViewport.scrollWidth - carouselViewport.clientWidth);
+
+  carouselViewport.scrollTo({
+    left: Math.min(maxScroll, Math.max(0, target)),
+    behavior: smooth ? "smooth" : "instant",
+  });
+  updateCarouselUi();
 }
 
 function updateCarouselUi() {
@@ -98,7 +118,7 @@ function updateCarouselUi() {
   const total = slides.length;
   if (!total) return;
 
-  const active = getActiveSlideIndex();
+  const active = carouselIndex;
   slides.forEach((slide, i) => slide.classList.toggle("is-active", i === active));
 
   carouselDots.querySelectorAll(".carousel-dot").forEach((dot, i) => {
@@ -114,23 +134,31 @@ function updateCarouselUi() {
 let carouselScrollTimer = null;
 function onCarouselScroll() {
   clearTimeout(carouselScrollTimer);
-  carouselScrollTimer = setTimeout(updateCarouselUi, 60);
+  carouselScrollTimer = setTimeout(() => {
+    carouselIndex = getActiveSlideIndex();
+    updateCarouselUi();
+  }, 80);
 }
 
 function initCarousel() {
-  carouselPrev?.addEventListener("click", () => scrollToSlide(getActiveSlideIndex() - 1));
-  carouselNext?.addEventListener("click", () => scrollToSlide(getActiveSlideIndex() + 1));
+  carouselPrev?.addEventListener("click", () => scrollToSlide(carouselIndex - 1));
+  carouselNext?.addEventListener("click", () => scrollToSlide(carouselIndex + 1));
   carouselViewport?.addEventListener("scroll", onCarouselScroll, { passive: true });
 
   carouselViewport?.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft") {
       e.preventDefault();
-      scrollToSlide(getActiveSlideIndex() - 1);
+      scrollToSlide(carouselIndex - 1);
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
-      scrollToSlide(getActiveSlideIndex() + 1);
+      scrollToSlide(carouselIndex + 1);
     }
   });
+
+  new ResizeObserver(() => {
+    syncCarouselPadding();
+    scrollToSlide(carouselIndex, false);
+  }).observe(carouselViewport);
 }
 
 function renderGallery({ scrollToStart = false } = {}) {
@@ -174,8 +202,10 @@ function renderGallery({ scrollToStart = false } = {}) {
   });
 
   requestAnimationFrame(() => {
-    scrollToSlide(scrollToStart ? 0 : getActiveSlideIndex(), false);
-    updateCarouselUi();
+    syncCarouselPadding();
+    if (scrollToStart) carouselIndex = 0;
+    else carouselIndex = Math.min(carouselIndex, rooms.length - 1);
+    scrollToSlide(carouselIndex, false);
   });
 }
 

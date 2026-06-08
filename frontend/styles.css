@@ -273,8 +273,9 @@ body {
 
 .carousel-track {
   display: flex; align-items: stretch; gap: clamp(14px, 2.5vw, 22px);
-  padding: 10px clamp(52px, 8vw, 72px) 20px;
+  padding: 10px 0 20px;
   min-height: 0;
+  box-sizing: border-box;
 }
 
 .carousel-slide {
