@@ -100,8 +100,62 @@ body {
 @keyframes drift1 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(60px, 50px); } }
 @keyframes drift2 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-50px, 40px); } }
 
+/* ghost frames — the empty exhibits of lives never lived, hung in the dark */
+.frames { perspective: 900px; }
+.ghost-frame {
+  position: absolute; border-radius: 3px;
+  border: 1px solid rgba(201, 168, 106, 0.16);
+  box-shadow:
+    inset 0 0 0 6px rgba(201, 168, 106, 0.05),
+    inset 0 0 38px rgba(0, 0, 0, 0.6),
+    0 0 1px rgba(201, 168, 106, 0.18);
+  background:
+    linear-gradient(160deg, rgba(34, 30, 43, 0.42), rgba(10, 9, 14, 0.5));
+  opacity: 0; filter: blur(0.4px);
+  animation: frame-breathe 26s ease-in-out infinite;
+}
+.ghost-frame::after {
+  content: ""; position: absolute; inset: 9px; border-radius: 1px;
+  border: 1px solid rgba(201, 168, 106, 0.08);
+}
+.gf-1 { left: 3.5%;  top: 16%; width: 92px;  height: 120px; transform: rotateY(34deg);  animation-delay: 0s; }
+.gf-2 { left: 8%;    top: 52%; width: 74px;  height: 96px;  transform: rotateY(30deg);  animation-delay: -7s; }
+.gf-3 { right: 3.5%; top: 22%; width: 96px;  height: 126px; transform: rotateY(-34deg); animation-delay: -13s; }
+.gf-4 { right: 9%;   top: 58%; width: 70px;  height: 92px;  transform: rotateY(-28deg); animation-delay: -19s; }
+.gf-5 { left: 50%;   top: 6%;  width: 64px;  height: 84px;  transform: translateX(-50%) scale(0.86); animation-delay: -4s; }
+@keyframes frame-breathe {
+  0%, 100% { opacity: 0.10; }
+  50%      { opacity: 0.32; }
+}
+
 /* floating dust motes (canvas, painted in app.js) */
 .dust { width: 100%; height: 100%; opacity: 0.9; }
+
+/* drifting "What if…" whispers — counterfactuals overheard in the hall */
+.whispers { overflow: hidden; }
+.whisper {
+  position: absolute; left: 0; top: 0;
+  font-family: var(--serif); font-style: italic;
+  font-size: clamp(15px, 2vw, 22px); letter-spacing: 0.01em;
+  color: rgba(201, 168, 106, 0.0);
+  text-shadow: 0 0 24px rgba(139, 92, 246, 0.18);
+  white-space: nowrap; filter: blur(0.5px);
+  will-change: transform, opacity;
+}
+
+/* lantern — the warm light the visitor carries through the dark */
+.lantern {
+  left: 0; top: 0; width: 620px; height: 620px;
+  margin-left: -310px; margin-top: -310px;
+  border-radius: 50%; mix-blend-mode: screen; opacity: 0;
+  background: radial-gradient(circle,
+    rgba(201, 168, 106, 0.16) 0%,
+    rgba(167, 139, 250, 0.08) 32%,
+    rgba(201, 168, 106, 0.0) 64%);
+  transform: translate3d(var(--lx, 50vw), var(--ly, 40vh), 0);
+  transition: opacity 0.8s ease;
+}
+.lantern.lit { opacity: 1; }
 
 .grain {
   pointer-events: none; opacity: 0.05; mix-blend-mode: overlay;
@@ -118,9 +172,17 @@ body {
 }
 .vignette { pointer-events: none; box-shadow: inset 0 0 240px 60px rgba(0, 0, 0, 0.85); }
 
+@keyframes whisper-rise {
+  0%   { opacity: 0; transform: translate3d(var(--wx), var(--wy), 0) translateY(28px); }
+  18%  { opacity: var(--wo, 0.22); }
+  82%  { opacity: var(--wo, 0.22); }
+  100% { opacity: 0; transform: translate3d(var(--wx), var(--wy), 0) translateY(-70px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .aurora, .beam, .spot.a, .spot.b, .grain { animation: none !important; }
+  .aurora, .beam, .spot.a, .spot.b, .grain, .ghost-frame, .whisper { animation: none !important; }
   .hall-bg::after, .aurora { transition: none !important; transform: none !important; }
+  .whispers, .lantern { display: none !important; }
 }
 
 /* ---------- layout ---------- */
@@ -137,12 +199,33 @@ body {
   color: var(--brass-dim); margin: 0 0 16px;
 }
 .title {
+  position: relative;
   font-family: var(--serif); font-weight: 500; line-height: 1.0; margin: 0;
   font-size: clamp(38px, 6.2vw, 64px); letter-spacing: 0.005em;
-  background: linear-gradient(180deg, #fbf7ff 0%, #d8cdea 46%, #9a8fb4 100%);
+  background-image: linear-gradient(180deg, #fbf7ff 0%, #d8cdea 46%, #9a8fb4 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
-  text-shadow: 0 0 60px rgba(167, 139, 250, 0.18);
   text-wrap: balance;
+  animation: title-breathe 7s ease-in-out infinite;
+}
+.title::after {
+  content: attr(data-title); position: absolute; inset: 0;
+  background-image: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(201, 168, 106, 0.85) 50%,
+    transparent 62%);
+  background-size: 280% 100%; background-position: 180% 0;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  pointer-events: none;
+  animation: title-glint 9s ease-in-out 2s infinite;
+}
+@keyframes title-breathe {
+  0%, 100% { text-shadow: 0 0 60px rgba(167, 139, 250, 0.16); }
+  50%      { text-shadow: 0 0 78px rgba(167, 139, 250, 0.30); }
+}
+@keyframes title-glint {
+  0%, 72%, 100% { background-position: 180% 0; }
+  86%           { background-position: -80% 0; }
 }
 .subtitle {
   font-family: var(--serif); font-style: italic; font-size: clamp(15px, 2.1vw, 20px);

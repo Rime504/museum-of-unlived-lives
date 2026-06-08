@@ -563,21 +563,38 @@ function initDust() {
 function initParallax() {
   if (prefersReducedMotion || window.matchMedia?.("(pointer: coarse)").matches) return;
   const root = document.documentElement;
-  let tx = 0;
-  let ty = 0;
-  let cx = 0;
-  let cy = 0;
-  let ticking = false;
+  const lantern = document.getElementById("lantern");
+
+  // normalized -1..1 for parallax; raw px for the lantern
+  let tx = 0, ty = 0, cx = 0, cy = 0;
+  let lpx = window.innerWidth / 2, lpy = window.innerHeight * 0.4;
+  let lcx = lpx, lcy = lpy;
+  let running = false;
 
   function loop() {
     cx += (tx - cx) * 0.06;
     cy += (ty - cy) * 0.06;
+    lcx += (lpx - lcx) * 0.12;
+    lcy += (lpy - lcy) * 0.12;
+
     root.style.setProperty("--px", cx.toFixed(3));
     root.style.setProperty("--py", cy.toFixed(3));
-    if (Math.abs(tx - cx) > 0.001 || Math.abs(ty - cy) > 0.001) {
+    if (lantern) {
+      lantern.style.setProperty("--lx", `${lcx.toFixed(1)}px`);
+      lantern.style.setProperty("--ly", `${lcy.toFixed(1)}px`);
+    }
+
+    const settled =
+      Math.abs(tx - cx) < 0.001 && Math.abs(ty - cy) < 0.001 &&
+      Math.abs(lpx - lcx) < 0.2 && Math.abs(lpy - lcy) < 0.2;
+    if (settled) running = false;
+    else requestAnimationFrame(loop);
+  }
+
+  function kick() {
+    if (!running) {
+      running = true;
       requestAnimationFrame(loop);
-    } else {
-      ticking = false;
     }
   }
 
@@ -586,17 +603,75 @@ function initParallax() {
     (e) => {
       tx = (e.clientX / window.innerWidth - 0.5) * 2;
       ty = (e.clientY / window.innerHeight - 0.5) * 2;
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(loop);
-      }
+      lpx = e.clientX;
+      lpy = e.clientY;
+      lantern?.classList.add("lit");
+      kick();
     },
     { passive: true }
   );
+  window.addEventListener("pointerleave", () => lantern?.classList.remove("lit"));
+}
+
+// ---------- drifting "What if…" whispers ----------
+const WHISPER_LINES = [
+  "What if I had stayed",
+  "What if I had said yes",
+  "What if I had never left",
+  "What if I had walked away",
+  "What if I had told the truth",
+  "What if I had answered the call",
+  "What if I had chosen the other road",
+  "What if I had been brave",
+  "What if I had let go sooner",
+  "What if I had forgiven them",
+  "What if I had gone alone",
+  "What if I had kept the letter",
+  "What if I had turned back",
+  "What if I had waited one more day",
+  "What if I had believed you",
+];
+
+function initWhispers() {
+  const layer = document.getElementById("whispers");
+  if (!layer || prefersReducedMotion) return;
+
+  let pool = [...WHISPER_LINES];
+  function nextLine() {
+    if (!pool.length) pool = [...WHISPER_LINES];
+    const i = (Math.random() * pool.length) | 0;
+    return pool.splice(i, 1)[0];
+  }
+
+  function spawn() {
+    if (document.hidden) return;
+    const el = document.createElement("span");
+    el.className = "whisper";
+    el.textContent = nextLine();
+
+    const wx = `${(8 + Math.random() * 78).toFixed(1)}vw`;
+    const wy = `${(20 + Math.random() * 64).toFixed(1)}vh`;
+    const dur = 11 + Math.random() * 7;
+    el.style.setProperty("--wx", wx);
+    el.style.setProperty("--wy", wy);
+    el.style.setProperty("--wo", (0.12 + Math.random() * 0.16).toFixed(3));
+    el.style.animation = `whisper-rise ${dur.toFixed(1)}s ease-in-out forwards`;
+
+    layer.appendChild(el);
+    el.addEventListener("animationend", () => el.remove());
+  }
+
+  // gentle cadence — never more than ~2-3 on screen
+  const tick = () => {
+    spawn();
+    setTimeout(tick, 4200 + Math.random() * 3600);
+  };
+  setTimeout(tick, 1400);
 }
 
 initDust();
 initParallax();
+initWhispers();
 initCarousel();
 renderGallery();
 autoGrow();
