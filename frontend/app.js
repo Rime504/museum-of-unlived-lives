@@ -70,12 +70,19 @@ function getCarouselSlides() {
   return [...carouselTrack.querySelectorAll(".carousel-slide")];
 }
 
-function syncCarouselPadding() {
+function syncCarouselSpacers() {
   const slides = getCarouselSlides();
-  if (!slides.length || !carouselViewport) return;
-  const pad = Math.max(48, (carouselViewport.clientWidth - slides[0].offsetWidth) / 2);
-  carouselTrack.style.paddingLeft = `${pad}px`;
-  carouselTrack.style.paddingRight = `${pad}px`;
+  const spacers = carouselTrack.querySelectorAll(".carousel-spacer");
+  if (!slides.length || !spacers.length || !carouselViewport) return;
+  const pad = Math.max(0, (carouselViewport.clientWidth - slides[0].offsetWidth) / 2);
+  spacers.forEach((el) => {
+    el.style.width = `${pad}px`;
+    el.style.flexBasis = `${pad}px`;
+  });
+}
+
+function slideScrollLeft(slide) {
+  return slide.offsetLeft + slide.offsetWidth / 2 - carouselViewport.clientWidth / 2;
 }
 
 function getActiveSlideIndex() {
@@ -102,15 +109,14 @@ function scrollToSlide(index, smooth = true) {
 
   carouselIndex = Math.max(0, Math.min(total - 1, index));
   const slide = slides[carouselIndex];
-  const target =
-    slide.offsetLeft - (carouselViewport.clientWidth - slide.offsetWidth) / 2;
+  const target = slideScrollLeft(slide);
   const maxScroll = Math.max(0, carouselViewport.scrollWidth - carouselViewport.clientWidth);
 
   carouselViewport.scrollTo({
     left: Math.min(maxScroll, Math.max(0, target)),
     behavior: smooth ? "smooth" : "instant",
   });
-  updateCarouselUi();
+  requestAnimationFrame(updateCarouselUi);
 }
 
 function updateCarouselUi() {
@@ -156,7 +162,7 @@ function initCarousel() {
   });
 
   new ResizeObserver(() => {
-    syncCarouselPadding();
+    syncCarouselSpacers();
     scrollToSlide(carouselIndex, false);
   }).observe(carouselViewport);
 }
@@ -181,6 +187,11 @@ function renderGallery({ scrollToStart = false } = {}) {
   carouselTrack.innerHTML = "";
   carouselDots.innerHTML = "";
 
+  const leadSpacer = document.createElement("div");
+  leadSpacer.className = "carousel-spacer";
+  leadSpacer.setAttribute("aria-hidden", "true");
+  carouselTrack.appendChild(leadSpacer);
+
   rooms.forEach((room, i) => {
     const fig = document.createElement("figure");
     fig.className = "carousel-slide";
@@ -201,8 +212,13 @@ function renderGallery({ scrollToStart = false } = {}) {
     carouselDots.appendChild(dot);
   });
 
+  const trailSpacer = document.createElement("div");
+  trailSpacer.className = "carousel-spacer";
+  trailSpacer.setAttribute("aria-hidden", "true");
+  carouselTrack.appendChild(trailSpacer);
+
   requestAnimationFrame(() => {
-    syncCarouselPadding();
+    syncCarouselSpacers();
     if (scrollToStart) carouselIndex = 0;
     else carouselIndex = Math.min(carouselIndex, rooms.length - 1);
     scrollToSlide(carouselIndex, false);
