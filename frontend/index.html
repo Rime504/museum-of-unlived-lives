@@ -94,8 +94,9 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6l6 6-6 6"/></svg>
     </button>
     <div class="lightbox-inner">
-      <div class="lightbox-body" id="lbBody" hidden></div>
-      <img id="lbImg" alt="exhibit" hidden />
+      <div class="lb-arc-viewport" id="lbArcViewport">
+        <div class="lb-arc-track" id="lbArcTrack"></div>
+      </div>
       <div class="lb-actions" id="lbActions" hidden>
         <span class="lb-counter" id="lbCounter" aria-live="polite"></span>
         <button class="ghost-btn" id="lbDownload" type="button">

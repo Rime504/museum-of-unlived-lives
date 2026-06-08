@@ -78,22 +78,34 @@ const ARC = {
   angleStep: 0.26,
   lift: 52,
   depth: 36,
+  rot: 26,
+  scaleStep: 0.1,
+  fadeStep: 0.14,
 };
 
-function applyArcLayout() {
-  const slides = getCarouselSlides();
+const LB_ARC = {
+  radius: 780,
+  angleStep: 0.2,
+  lift: 44,
+  depth: 64,
+  rot: 22,
+  scaleStep: 0.12,
+  fadeStep: 0.16,
+};
+
+function applyArcToSlides(slides, activeIndex, cfg) {
   const reduced =
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
   slides.forEach((slide, i) => {
-    const d = i - carouselIndex;
-    const theta = d * ARC.angleStep;
-    const x = Math.sin(theta) * ARC.radius;
-    const y = -(1 - Math.cos(theta)) * ARC.lift;
-    const z = -Math.abs(d) * ARC.depth;
-    const rot = d * -26;
-    const sc = 1 - Math.min(Math.abs(d) * 0.1, 0.42);
-    const op = 1 - Math.min(Math.abs(d) * 0.14, 0.62);
+    const d = i - activeIndex;
+    const theta = d * cfg.angleStep;
+    const x = Math.sin(theta) * cfg.radius;
+    const y = -(1 - Math.cos(theta)) * cfg.lift;
+    const z = -Math.abs(d) * cfg.depth;
+    const rot = d * -cfg.rot;
+    const sc = 1 - Math.min(Math.abs(d) * cfg.scaleStep, 0.48);
+    const op = 1 - Math.min(Math.abs(d) * cfg.fadeStep, 0.68);
 
     slide.style.transform =
       `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z}px) ` +
@@ -101,9 +113,14 @@ function applyArcLayout() {
     slide.style.opacity = op.toFixed(3);
     slide.style.zIndex = String(100 - Math.abs(d));
     slide.classList.toggle("is-active", d === 0);
+    slide.style.pointerEvents = Math.abs(d) <= 2 ? "auto" : "none";
     if (reduced) slide.style.transition = "none";
     else slide.style.transition = "";
   });
+}
+
+function applyArcLayout() {
+  applyArcToSlides(getCarouselSlides(), carouselIndex, ARC);
 }
 
 function scrollToSlide(index) {
@@ -219,28 +236,60 @@ function pushRoom(room) {
   renderGallery({ scrollToStart: true });
 }
 
-// ---------- lightbox ----------
+// ---------- lightbox (curved arc zoom) ----------
 const lb = $("#lightbox");
-const lbBody = $("#lbBody");
-const lbImg = $("#lbImg");
+const lbArcTrack = $("#lbArcTrack");
 const lbActions = $("#lbActions");
 const lbDownload = $("#lbDownload");
 const lbPrev = $("#lbPrev");
 const lbNext = $("#lbNext");
 const lbCounter = $("#lbCounter");
 
-function renderLightboxRoom(room) {
-  if (room.card_html) {
-    lbBody.hidden = false;
-    lbBody.innerHTML = room.card_html;
-    lbImg.hidden = true;
-    lbImg.removeAttribute("src");
-  } else {
-    lbBody.hidden = true;
-    lbBody.innerHTML = "";
-    lbImg.hidden = false;
-    lbImg.src = room.png;
+let lbArcKey = "";
+
+function getLbArcSlides() {
+  return [...lbArcTrack.querySelectorAll(".lb-arc-slide")];
+}
+
+function applyLbArcLayout() {
+  applyArcToSlides(getLbArcSlides(), lightboxIndex, LB_ARC);
+}
+
+function arcRoomsKey(rooms) {
+  return rooms.map((r) => r.title).join("\0");
+}
+
+function buildLightboxArc(rooms) {
+  lbArcTrack.innerHTML = "";
+  rooms.forEach((room, i) => {
+    const slide = document.createElement("div");
+    slide.className = "lb-arc-slide";
+    if (room.card_html) {
+      slide.innerHTML = room.card_html;
+    } else {
+      slide.innerHTML = `<img class="lb-arc-fallback" src="${escapeAttr(room.png)}" alt="${escapeAttr(room.title)}" />`;
+    }
+    slide.addEventListener("click", (e) => {
+      if (i === lightboxIndex) return;
+      e.stopPropagation();
+      navigateLightbox(i - lightboxIndex);
+    });
+    lbArcTrack.appendChild(slide);
+  });
+}
+
+function ensureLightboxArc() {
+  const rooms = loadRooms();
+  const key = arcRoomsKey(rooms);
+  if (key !== lbArcKey) {
+    lbArcKey = key;
+    buildLightboxArc(rooms);
   }
+  applyLbArcLayout();
+}
+
+function activeLightboxCard() {
+  return lbArcTrack.querySelector(".lb-arc-slide.is-active .museum-card");
 }
 
 function updateLightboxNav() {
@@ -254,19 +303,13 @@ function updateLightboxNav() {
   lbCounter.textContent = multi ? `${lightboxIndex + 1} / ${total}` : "";
 }
 
-function showLightboxRoom(index, { direction = 0 } = {}) {
+function showLightboxRoom(index) {
   const rooms = loadRooms();
   if (!rooms.length) return;
   lightboxIndex = Math.max(0, Math.min(rooms.length - 1, index));
   activeRoom = rooms[lightboxIndex];
   carouselIndex = lightboxIndex;
-
-  if (direction !== 0 && lbBody) {
-    lbBody.classList.remove("lb-from-left", "lb-from-right");
-    lbBody.classList.add(direction > 0 ? "lb-from-right" : "lb-from-left");
-  }
-
-  renderLightboxRoom(activeRoom);
+  ensureLightboxArc();
   updateLightboxNav();
   scrollToSlide(lightboxIndex);
 }
@@ -274,7 +317,7 @@ function showLightboxRoom(index, { direction = 0 } = {}) {
 const openLightbox = (index) => {
   const rooms = loadRooms();
   if (!rooms.length) return;
-  showLightboxRoom(typeof index === "number" ? index : 0, { direction: 0 });
+  showLightboxRoom(typeof index === "number" ? index : 0);
   lbActions.hidden = false;
   lb.classList.add("open");
 };
@@ -284,17 +327,12 @@ const navigateLightbox = (delta) => {
   const rooms = loadRooms();
   const next = lightboxIndex + delta;
   if (next < 0 || next >= rooms.length) return;
-  showLightboxRoom(next, { direction: delta });
+  showLightboxRoom(next);
 };
 
 const closeLightbox = () => {
   activeRoom = null;
   lb.classList.remove("open");
-  lbBody.innerHTML = "";
-  lbBody.hidden = true;
-  lbBody.classList.remove("lb-from-left", "lb-from-right");
-  lbImg.hidden = true;
-  lbImg.removeAttribute("src");
   lbActions.hidden = true;
   scrollToSlide(lightboxIndex);
 };
@@ -313,7 +351,7 @@ lbDownload?.addEventListener("click", async () => {
   lbDownload.disabled = true;
   try {
     await exportRoomPng({
-      cardEl: lbBody.querySelector(".museum-card"),
+      cardEl: activeLightboxCard(),
       title: activeRoom.title,
       fallbackPng: activeRoom.png,
     });
