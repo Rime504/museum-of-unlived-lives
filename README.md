@@ -19,6 +19,8 @@ license: mit
 
 Enter a counterfactual — a path you did not take. The curator builds a museum exhibit: title, narrative, artifact, mood palette, and abstract SVG geometry. Results save to your personal gallery in the browser; download any card as a high-res PNG.
 
+**Track 2: Thousand Token Wood**
+
 **Built by [false200](https://github.com/false200) and [Rime504](https://github.com/Rime504)**
 
 **Demo:** [build-small-hackathon/museum-of-unlived-lives](https://huggingface.co/spaces/build-small-hackathon/museum-of-unlived-lives)  
