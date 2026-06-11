@@ -27,7 +27,14 @@ Each counterfactual becomes an exhibit card: title, narrative, mood, artifact, a
 
 **Try it:** [build-small-hackathon/museum-of-unlived-lives](https://huggingface.co/spaces/build-small-hackathon/museum-of-unlived-lives)
 
-**Built by [false200](https://github.com/false200) and [Rime504](https://github.com/Rime504)** · **Code:** [github.com/Rime504/museum-of-unlived-lives](https://github.com/Rime504/museum-of-unlived-lives)
+**Built by**
+
+| | GitHub | Hugging Face |
+|---|--------|--------------|
+| **false200** | [false200](https://github.com/false200) | [divmodelhq](https://huggingface.co/divmodelhq) |
+| **Rime504** | [Rime504](https://github.com/Rime504) | [Rime04](https://huggingface.co/Rime04) |
+
+**Code:** [github.com/Rime504/museum-of-unlived-lives](https://github.com/Rime504/museum-of-unlived-lives)
 
 ## Curated by [OpenBMB](https://huggingface.co/openbmb) [MiniCPM](https://huggingface.co/openbmb/MiniCPM4.1-8B-GGUF)
 
