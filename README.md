@@ -4,13 +4,20 @@ emoji: 🏛️
 colorFrom: gray
 colorTo: purple
 sdk: gradio
-sdk_version: "6.17.3"
+sdk_version: "6.18.0"
 python_version: "3.11"
 app_file: app.py
 pinned: true
 fullWidth: true
 header: mini
 license: mit
+tags:
+  - track:wood
+  - sponsor:openbmb
+  - achievement:offgrid
+  - achievement:offbrand
+  - achievement:llama
+  - achievement:fieldnotes
 ---
 
 # Museum of Unlived Lives
@@ -158,7 +165,7 @@ pip install --force-reinstall -r requirements.txt
 Do **not** use the CUDA extra index. Install the CPU wheel and force CPU inference:
 
 ```bash
-pip install gradio==6.17.3 spaces>=0.43.0 Pillow>=10.3.0 huggingface_hub>=0.24.0
+pip install gradio==6.18.0 spaces>=0.43.0 Pillow>=10.3.0 huggingface_hub>=0.24.0
 pip install llama-cpp-python==0.3.23
 ```
 
@@ -181,7 +188,7 @@ Expect **3–8 minutes** per exhibit on a typical laptop CPU.
 ### C — Mac (Apple Silicon)
 
 ```bash
-pip install gradio==6.17.3 spaces>=0.43.0 Pillow>=10.3.0 huggingface_hub>=0.24.0
+pip install gradio==6.18.0 spaces>=0.43.0 Pillow>=10.3.0 huggingface_hub>=0.24.0
 CMAKE_ARGS="-DGGML_METAL=on" pip install llama-cpp-python==0.3.23
 export MUSEUM_N_GPU_LAYERS=-1
 python app.py
