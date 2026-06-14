@@ -26,6 +26,11 @@ tags:
 
 **Blog:** [Building the Museum of Unlived Lives](https://huggingface.co/blog/Rime04/the-museum-of-unlived-lives) — the story of unlived lives, what we learned about prompts and structure, and why a small local model was the whole point.
 
+**🎬 Demo video**: https://youtu.be/NvGzIj5a5eQ
+**🔗 Social post:** https://x.com/RimeK05/status/2066280487576797258
+**🖼️ Try it:**
+https://huggingface.co/spaces/build-small-hackathon/museum-of-unlived-lives
+
 **Track 2: Thousand Token Wood**
 
 You type a path you didn't take — the job in Tokyo, the degree you walked away from, the version of you that stayed. A curator opens a room for it.
