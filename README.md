@@ -24,7 +24,7 @@ tags:
 
 *Some lives we live. Most we only imagine.*
 
-**Blog:** [Building the Museum of Unlived Lives](https://huggingface.co/blog/Rime04/the-museum-of-unlived-lives) — how we built it, what we learned, and why a small model was enough.
+**Blog:** [Building the Museum of Unlived Lives](https://huggingface.co/blog/Rime04/the-museum-of-unlived-lives) — the story of unlived lives, what we learned about prompts and structure, and why a small local model was the whole point.
 
 **Track 2: Thousand Token Wood**
 
