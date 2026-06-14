@@ -24,6 +24,8 @@ tags:
 
 *Some lives we live. Most we only imagine.*
 
+**Blog:** [Building the Museum of Unlived Lives](https://huggingface.co/blog/Rime04/the-museum-of-unlived-lives) — how we built it, what we learned, and why a small model was enough.
+
 **Track 2: Thousand Token Wood**
 
 You type a path you didn't take — the job in Tokyo, the degree you walked away from, the version of you that stayed. A curator opens a room for it.
