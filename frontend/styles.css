@@ -393,9 +393,22 @@ body {
   margin: 6px 0 0; font-family: var(--sans); font-size: 12px; letter-spacing: 0.04em;
   color: var(--faint); font-style: normal;
 }
-.gallery-head > span {
+.gallery-head > span,
+.gallery-head-actions span {
   flex-shrink: 0; font-family: var(--sans); font-size: 11px; letter-spacing: 0.22em;
   text-transform: uppercase; color: var(--faint);
+}
+.gallery-head-actions {
+  display: flex; align-items: center; gap: 14px; flex-shrink: 0;
+}
+.gallery-clear {
+  cursor: pointer; font-family: var(--sans); font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted); background: transparent;
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.gallery-clear:hover {
+  color: var(--text); border-color: var(--brass-dim); background: rgba(201, 168, 106, 0.06);
 }
 .gallery-empty {
   color: var(--faint); font-family: var(--serif); font-style: italic; font-size: 17px;

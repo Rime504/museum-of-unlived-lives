@@ -12,6 +12,7 @@ const lineEl = $("#line");
 const openBtn = $("#open");
 const stage = $("#stage");
 const countEl = $("#count");
+const galleryClear = $("#galleryClear");
 const galleryEmpty = $("#galleryEmpty");
 const galleryCarousel = $("#galleryCarousel");
 const galleryHint = $("#galleryHint");
@@ -66,6 +67,16 @@ function saveRooms(rooms) {
       list = list.slice(0, -1);
     }
   }
+  localStorage.removeItem(STORE_KEY);
+}
+
+function clearGallery() {
+  localStorage.removeItem(STORE_KEY);
+  carouselIndex = 0;
+  lightboxIndex = 0;
+  activeRoom = null;
+  if (lb.classList.contains("open")) closeLightbox();
+  renderGallery({ scrollToStart: true });
 }
 
 function getCarouselSlides() {
@@ -188,10 +199,13 @@ function renderGallery({ scrollToStart = false } = {}) {
     galleryEmpty.hidden = false;
     galleryCarousel.hidden = true;
     galleryHint.hidden = true;
+    galleryClear.hidden = true;
     carouselTrack.innerHTML = "";
     carouselDots.innerHTML = "";
     return;
   }
+
+  galleryClear.hidden = false;
 
   galleryEmpty.hidden = true;
   galleryCarousel.hidden = false;
@@ -625,6 +639,10 @@ async function openRoom() {
 // ---------- wiring ----------
 lineEl.addEventListener("input", autoGrow);
 openBtn.addEventListener("click", openRoom);
+galleryClear?.addEventListener("click", () => {
+  if (!loadRooms().length) return;
+  clearGallery();
+});
 lineEl.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
     e.preventDefault();
