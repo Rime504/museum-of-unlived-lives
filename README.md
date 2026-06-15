@@ -24,7 +24,7 @@ tags:
 
 *Some lives we live. Most we only imagine.*
 
-**Blog** · [Building the Museum of Unlived Lives](https://huggingface.co/blog/Rime04/the-museum-of-unlived-lives) · **Video** · [YouTube demo](https://youtu.be/NvGzIj5a5eQ?si=pqsYzwSKUup3HZCd) · **Social** · [Launch post on X](https://x.com/RimeK05/status/2066280487576797258)
+**📖 Blog:** [Building the Museum of Unlived Lives](https://huggingface.co/blog/Rime04/the-museum-of-unlived-lives)
 
 **🎬 Demo video**: https://youtu.be/NvGzIj5a5eQ
 **🔗 Social post:** https://x.com/RimeK05/status/2066280487576797258
