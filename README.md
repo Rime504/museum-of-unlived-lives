@@ -26,10 +26,11 @@ tags:
 
 **📖 Blog:** [Building the Museum of Unlived Lives](https://huggingface.co/blog/Rime04/the-museum-of-unlived-lives)
 
-**🎬 Demo video**: https://youtu.be/NvGzIj5a5eQ
+**🎬 Demo video:** https://youtu.be/NvGzIj5a5eQ
+
 **🔗 Social post:** https://x.com/RimeK05/status/2066280487576797258
-**🖼️ Try it:**
-https://huggingface.co/spaces/build-small-hackathon/museum-of-unlived-lives
+
+**🖼️ Try it:** https://huggingface.co/spaces/build-small-hackathon/museum-of-unlived-lives
 
 **Track 2: Thousand Token Wood**
 
